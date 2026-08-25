@@ -68,7 +68,10 @@ function CitizenGrievanceDetail() {
 
       {grievance.sla && <SlaIndicator {...grievance.sla} />}
 
-      <RequestedOutcomeCard originalText={grievance.originalText} />
+      <RequestedOutcomeCard
+        outcome={{ citizenWords: grievance.originalText, urgency: "time_sensitive" }}
+        originalText={grievance.originalText}
+      />
 
       <section className="space-y-4" aria-labelledby="case-history">
         <h2 id="case-history" className="text-lg font-semibold">
