@@ -79,7 +79,7 @@ export const SAMPLE_TIMELINE: TimelineEventRecord[] = [
     title: "Grievance described and registered",
     description: "You described the problem in your own words. The original text is preserved on this case.",
     tone: "neutral",
-    attachments: [SAMPLE_DOCUMENTS[0]],
+    attachments: [SAMPLE_DOCUMENTS[0]!],
   },
   {
     id: "e-2",
@@ -99,7 +99,7 @@ export const SAMPLE_TIMELINE: TimelineEventRecord[] = [
     description:
       "The office stated the arrears were released to the bank on 29 August and attached its action note.",
     tone: "info",
-    attachments: [SAMPLE_DOCUMENTS[1]],
+    attachments: [SAMPLE_DOCUMENTS[1]!],
   },
   {
     id: "e-4",

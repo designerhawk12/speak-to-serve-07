@@ -16,16 +16,30 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as CitizenRouteImport } from './routes/citizen'
 import { Route as ContactRouteImport } from './routes/contact'
 import { Route as FaqRouteImport } from './routes/faq'
+import { Route as OfficeRouteImport } from './routes/office'
 import { Route as TrackRouteImport } from './routes/track'
 import { Route as AuthForgotPasswordRouteImport } from './routes/auth.forgot-password'
 import { Route as AuthLoginRouteImport } from './routes/auth.login'
 import { Route as AuthOfficerLoginRouteImport } from './routes/auth.officer-login'
 import { Route as AuthSignupRouteImport } from './routes/auth.signup'
 import { Route as CitizenIndexRouteImport } from './routes/citizen.index'
+import { Route as CitizenNotificationsRouteImport } from './routes/citizen.notifications'
+import { Route as CitizenProfileRouteImport } from './routes/citizen.profile'
+import { Route as OfficeIndexRouteImport } from './routes/office.index'
+import { Route as OfficeAnalyticsRouteImport } from './routes/office.analytics'
+import { Route as OfficeSystemicIssuesRouteImport } from './routes/office.systemic-issues'
 import { Route as OfficersAppealsRouteImport } from './routes/officers.appeals'
 import { Route as OfficersCentralRouteImport } from './routes/officers.central'
 import { Route as OfficersStatesRouteImport } from './routes/officers.states'
+import { Route as CitizenAppealsIdRouteImport } from './routes/citizen.appeals.$id'
+import { Route as CitizenGrievancesIdRouteImport } from './routes/citizen.grievances.$id'
 import { Route as CitizenGrievancesNewRouteImport } from './routes/citizen.grievances.new'
+import { Route as OfficeAppealsIndexRouteImport } from './routes/office.appeals.index'
+import { Route as OfficeAppealsIdRouteImport } from './routes/office.appeals.$id'
+import { Route as OfficeCasesIndexRouteImport } from './routes/office.cases.index'
+import { Route as OfficeCasesIdRouteImport } from './routes/office.cases.$id'
+import { Route as CitizenGrievancesIdAppealRouteImport } from './routes/citizen.grievances.$id.appeal'
+import { Route as CitizenGrievancesIdResolutionRouteImport } from './routes/citizen.grievances.$id.resolution'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -62,6 +76,11 @@ const FaqRoute = FaqRouteImport.update({
   path: '/faq',
   getParentRoute: () => rootRouteImport,
 } as any)
+const OfficeRoute = OfficeRouteImport.update({
+  id: '/office',
+  path: '/office',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TrackRoute = TrackRouteImport.update({
   id: '/track',
   path: '/track',
@@ -92,6 +111,31 @@ const CitizenIndexRoute = CitizenIndexRouteImport.update({
   path: '/',
   getParentRoute: () => CitizenRoute,
 } as any)
+const CitizenNotificationsRoute = CitizenNotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
+  getParentRoute: () => CitizenRoute,
+} as any)
+const CitizenProfileRoute = CitizenProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => CitizenRoute,
+} as any)
+const OfficeIndexRoute = OfficeIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => OfficeRoute,
+} as any)
+const OfficeAnalyticsRoute = OfficeAnalyticsRouteImport.update({
+  id: '/analytics',
+  path: '/analytics',
+  getParentRoute: () => OfficeRoute,
+} as any)
+const OfficeSystemicIssuesRoute = OfficeSystemicIssuesRouteImport.update({
+  id: '/systemic-issues',
+  path: '/systemic-issues',
+  getParentRoute: () => OfficeRoute,
+} as any)
 const OfficersAppealsRoute = OfficersAppealsRouteImport.update({
   id: '/officers/appeals',
   path: '/officers/appeals',
@@ -107,11 +151,53 @@ const OfficersStatesRoute = OfficersStatesRouteImport.update({
   path: '/officers/states',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CitizenAppealsIdRoute = CitizenAppealsIdRouteImport.update({
+  id: '/appeals/$id',
+  path: '/appeals/$id',
+  getParentRoute: () => CitizenRoute,
+} as any)
+const CitizenGrievancesIdRoute = CitizenGrievancesIdRouteImport.update({
+  id: '/grievances/$id',
+  path: '/grievances/$id',
+  getParentRoute: () => CitizenRoute,
+} as any)
 const CitizenGrievancesNewRoute = CitizenGrievancesNewRouteImport.update({
   id: '/grievances/new',
   path: '/grievances/new',
   getParentRoute: () => CitizenRoute,
 } as any)
+const OfficeAppealsIndexRoute = OfficeAppealsIndexRouteImport.update({
+  id: '/appeals/',
+  path: '/appeals/',
+  getParentRoute: () => OfficeRoute,
+} as any)
+const OfficeAppealsIdRoute = OfficeAppealsIdRouteImport.update({
+  id: '/appeals/$id',
+  path: '/appeals/$id',
+  getParentRoute: () => OfficeRoute,
+} as any)
+const OfficeCasesIndexRoute = OfficeCasesIndexRouteImport.update({
+  id: '/cases/',
+  path: '/cases/',
+  getParentRoute: () => OfficeRoute,
+} as any)
+const OfficeCasesIdRoute = OfficeCasesIdRouteImport.update({
+  id: '/cases/$id',
+  path: '/cases/$id',
+  getParentRoute: () => OfficeRoute,
+} as any)
+const CitizenGrievancesIdAppealRoute =
+  CitizenGrievancesIdAppealRouteImport.update({
+    id: '/appeal',
+    path: '/appeal',
+    getParentRoute: () => CitizenGrievancesIdRoute,
+  } as any)
+const CitizenGrievancesIdResolutionRoute =
+  CitizenGrievancesIdResolutionRouteImport.update({
+    id: '/resolution',
+    path: '/resolution',
+    getParentRoute: () => CitizenGrievancesIdRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -121,16 +207,30 @@ export interface FileRoutesByFullPath {
   '/citizen': typeof CitizenRouteWithChildren
   '/contact': typeof ContactRoute
   '/faq': typeof FaqRoute
+  '/office': typeof OfficeRouteWithChildren
   '/track': typeof TrackRoute
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/officer-login': typeof AuthOfficerLoginRoute
   '/auth/signup': typeof AuthSignupRoute
+  '/citizen/notifications': typeof CitizenNotificationsRoute
+  '/citizen/profile': typeof CitizenProfileRoute
+  '/office/analytics': typeof OfficeAnalyticsRoute
+  '/office/systemic-issues': typeof OfficeSystemicIssuesRoute
   '/officers/appeals': typeof OfficersAppealsRoute
   '/officers/central': typeof OfficersCentralRoute
   '/officers/states': typeof OfficersStatesRoute
   '/citizen/': typeof CitizenIndexRoute
+  '/office/': typeof OfficeIndexRoute
+  '/citizen/appeals/$id': typeof CitizenAppealsIdRoute
+  '/citizen/grievances/$id': typeof CitizenGrievancesIdRouteWithChildren
   '/citizen/grievances/new': typeof CitizenGrievancesNewRoute
+  '/office/appeals/$id': typeof OfficeAppealsIdRoute
+  '/office/cases/$id': typeof OfficeCasesIdRoute
+  '/office/appeals/': typeof OfficeAppealsIndexRoute
+  '/office/cases/': typeof OfficeCasesIndexRoute
+  '/citizen/grievances/$id/appeal': typeof CitizenGrievancesIdAppealRoute
+  '/citizen/grievances/$id/resolution': typeof CitizenGrievancesIdResolutionRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -144,11 +244,24 @@ export interface FileRoutesByTo {
   '/auth/login': typeof AuthLoginRoute
   '/auth/officer-login': typeof AuthOfficerLoginRoute
   '/auth/signup': typeof AuthSignupRoute
+  '/citizen/notifications': typeof CitizenNotificationsRoute
+  '/citizen/profile': typeof CitizenProfileRoute
+  '/office/analytics': typeof OfficeAnalyticsRoute
+  '/office/systemic-issues': typeof OfficeSystemicIssuesRoute
   '/officers/appeals': typeof OfficersAppealsRoute
   '/officers/central': typeof OfficersCentralRoute
   '/officers/states': typeof OfficersStatesRoute
   '/citizen': typeof CitizenIndexRoute
+  '/office': typeof OfficeIndexRoute
+  '/citizen/appeals/$id': typeof CitizenAppealsIdRoute
+  '/citizen/grievances/$id': typeof CitizenGrievancesIdRouteWithChildren
   '/citizen/grievances/new': typeof CitizenGrievancesNewRoute
+  '/office/appeals/$id': typeof OfficeAppealsIdRoute
+  '/office/cases/$id': typeof OfficeCasesIdRoute
+  '/office/appeals': typeof OfficeAppealsIndexRoute
+  '/office/cases': typeof OfficeCasesIndexRoute
+  '/citizen/grievances/$id/appeal': typeof CitizenGrievancesIdAppealRoute
+  '/citizen/grievances/$id/resolution': typeof CitizenGrievancesIdResolutionRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -159,16 +272,30 @@ export interface FileRoutesById {
   '/citizen': typeof CitizenRouteWithChildren
   '/contact': typeof ContactRoute
   '/faq': typeof FaqRoute
+  '/office': typeof OfficeRouteWithChildren
   '/track': typeof TrackRoute
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/officer-login': typeof AuthOfficerLoginRoute
   '/auth/signup': typeof AuthSignupRoute
+  '/citizen/notifications': typeof CitizenNotificationsRoute
+  '/citizen/profile': typeof CitizenProfileRoute
+  '/office/analytics': typeof OfficeAnalyticsRoute
+  '/office/systemic-issues': typeof OfficeSystemicIssuesRoute
   '/officers/appeals': typeof OfficersAppealsRoute
   '/officers/central': typeof OfficersCentralRoute
   '/officers/states': typeof OfficersStatesRoute
   '/citizen/': typeof CitizenIndexRoute
+  '/office/': typeof OfficeIndexRoute
+  '/citizen/appeals/$id': typeof CitizenAppealsIdRoute
+  '/citizen/grievances/$id': typeof CitizenGrievancesIdRouteWithChildren
   '/citizen/grievances/new': typeof CitizenGrievancesNewRoute
+  '/office/appeals/$id': typeof OfficeAppealsIdRoute
+  '/office/cases/$id': typeof OfficeCasesIdRoute
+  '/office/appeals/': typeof OfficeAppealsIndexRoute
+  '/office/cases/': typeof OfficeCasesIndexRoute
+  '/citizen/grievances/$id/appeal': typeof CitizenGrievancesIdAppealRoute
+  '/citizen/grievances/$id/resolution': typeof CitizenGrievancesIdResolutionRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -180,16 +307,30 @@ export interface FileRouteTypes {
     | '/citizen'
     | '/contact'
     | '/faq'
+    | '/office'
     | '/track'
     | '/auth/forgot-password'
     | '/auth/login'
     | '/auth/officer-login'
     | '/auth/signup'
+    | '/citizen/notifications'
+    | '/citizen/profile'
+    | '/office/analytics'
+    | '/office/systemic-issues'
     | '/officers/appeals'
     | '/officers/central'
     | '/officers/states'
     | '/citizen/'
+    | '/office/'
+    | '/citizen/appeals/$id'
+    | '/citizen/grievances/$id'
     | '/citizen/grievances/new'
+    | '/office/appeals/$id'
+    | '/office/cases/$id'
+    | '/office/appeals/'
+    | '/office/cases/'
+    | '/citizen/grievances/$id/appeal'
+    | '/citizen/grievances/$id/resolution'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -203,11 +344,24 @@ export interface FileRouteTypes {
     | '/auth/login'
     | '/auth/officer-login'
     | '/auth/signup'
+    | '/citizen/notifications'
+    | '/citizen/profile'
+    | '/office/analytics'
+    | '/office/systemic-issues'
     | '/officers/appeals'
     | '/officers/central'
     | '/officers/states'
     | '/citizen'
+    | '/office'
+    | '/citizen/appeals/$id'
+    | '/citizen/grievances/$id'
     | '/citizen/grievances/new'
+    | '/office/appeals/$id'
+    | '/office/cases/$id'
+    | '/office/appeals'
+    | '/office/cases'
+    | '/citizen/grievances/$id/appeal'
+    | '/citizen/grievances/$id/resolution'
   id:
     | '__root__'
     | '/'
@@ -217,16 +371,30 @@ export interface FileRouteTypes {
     | '/citizen'
     | '/contact'
     | '/faq'
+    | '/office'
     | '/track'
     | '/auth/forgot-password'
     | '/auth/login'
     | '/auth/officer-login'
     | '/auth/signup'
+    | '/citizen/notifications'
+    | '/citizen/profile'
+    | '/office/analytics'
+    | '/office/systemic-issues'
     | '/officers/appeals'
     | '/officers/central'
     | '/officers/states'
     | '/citizen/'
+    | '/office/'
+    | '/citizen/appeals/$id'
+    | '/citizen/grievances/$id'
     | '/citizen/grievances/new'
+    | '/office/appeals/$id'
+    | '/office/cases/$id'
+    | '/office/appeals/'
+    | '/office/cases/'
+    | '/citizen/grievances/$id/appeal'
+    | '/citizen/grievances/$id/resolution'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -237,6 +405,7 @@ export interface RootRouteChildren {
   CitizenRoute: typeof CitizenRouteWithChildren
   ContactRoute: typeof ContactRoute
   FaqRoute: typeof FaqRoute
+  OfficeRoute: typeof OfficeRouteWithChildren
   TrackRoute: typeof TrackRoute
   OfficersAppealsRoute: typeof OfficersAppealsRoute
   OfficersCentralRoute: typeof OfficersCentralRoute
@@ -294,6 +463,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FaqRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/office': {
+      id: '/office'
+      path: '/office'
+      fullPath: '/office'
+      preLoaderRoute: typeof OfficeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/track': {
       id: '/track'
       path: '/track'
@@ -336,6 +512,41 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CitizenIndexRouteImport
       parentRoute: typeof CitizenRoute
     }
+    '/citizen/notifications': {
+      id: '/citizen/notifications'
+      path: '/notifications'
+      fullPath: '/citizen/notifications'
+      preLoaderRoute: typeof CitizenNotificationsRouteImport
+      parentRoute: typeof CitizenRoute
+    }
+    '/citizen/profile': {
+      id: '/citizen/profile'
+      path: '/profile'
+      fullPath: '/citizen/profile'
+      preLoaderRoute: typeof CitizenProfileRouteImport
+      parentRoute: typeof CitizenRoute
+    }
+    '/office/': {
+      id: '/office/'
+      path: '/'
+      fullPath: '/office/'
+      preLoaderRoute: typeof OfficeIndexRouteImport
+      parentRoute: typeof OfficeRoute
+    }
+    '/office/analytics': {
+      id: '/office/analytics'
+      path: '/analytics'
+      fullPath: '/office/analytics'
+      preLoaderRoute: typeof OfficeAnalyticsRouteImport
+      parentRoute: typeof OfficeRoute
+    }
+    '/office/systemic-issues': {
+      id: '/office/systemic-issues'
+      path: '/systemic-issues'
+      fullPath: '/office/systemic-issues'
+      preLoaderRoute: typeof OfficeSystemicIssuesRouteImport
+      parentRoute: typeof OfficeRoute
+    }
     '/officers/appeals': {
       id: '/officers/appeals'
       path: '/officers/appeals'
@@ -357,12 +568,68 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OfficersStatesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/citizen/appeals/$id': {
+      id: '/citizen/appeals/$id'
+      path: '/appeals/$id'
+      fullPath: '/citizen/appeals/$id'
+      preLoaderRoute: typeof CitizenAppealsIdRouteImport
+      parentRoute: typeof CitizenRoute
+    }
+    '/citizen/grievances/$id': {
+      id: '/citizen/grievances/$id'
+      path: '/grievances/$id'
+      fullPath: '/citizen/grievances/$id'
+      preLoaderRoute: typeof CitizenGrievancesIdRouteImport
+      parentRoute: typeof CitizenRoute
+    }
     '/citizen/grievances/new': {
       id: '/citizen/grievances/new'
       path: '/grievances/new'
       fullPath: '/citizen/grievances/new'
       preLoaderRoute: typeof CitizenGrievancesNewRouteImport
       parentRoute: typeof CitizenRoute
+    }
+    '/office/appeals/': {
+      id: '/office/appeals/'
+      path: '/appeals'
+      fullPath: '/office/appeals/'
+      preLoaderRoute: typeof OfficeAppealsIndexRouteImport
+      parentRoute: typeof OfficeRoute
+    }
+    '/office/appeals/$id': {
+      id: '/office/appeals/$id'
+      path: '/appeals/$id'
+      fullPath: '/office/appeals/$id'
+      preLoaderRoute: typeof OfficeAppealsIdRouteImport
+      parentRoute: typeof OfficeRoute
+    }
+    '/office/cases/': {
+      id: '/office/cases/'
+      path: '/cases'
+      fullPath: '/office/cases/'
+      preLoaderRoute: typeof OfficeCasesIndexRouteImport
+      parentRoute: typeof OfficeRoute
+    }
+    '/office/cases/$id': {
+      id: '/office/cases/$id'
+      path: '/cases/$id'
+      fullPath: '/office/cases/$id'
+      preLoaderRoute: typeof OfficeCasesIdRouteImport
+      parentRoute: typeof OfficeRoute
+    }
+    '/citizen/grievances/$id/appeal': {
+      id: '/citizen/grievances/$id/appeal'
+      path: '/appeal'
+      fullPath: '/citizen/grievances/$id/appeal'
+      preLoaderRoute: typeof CitizenGrievancesIdAppealRouteImport
+      parentRoute: typeof CitizenGrievancesIdRoute
+    }
+    '/citizen/grievances/$id/resolution': {
+      id: '/citizen/grievances/$id/resolution'
+      path: '/resolution'
+      fullPath: '/citizen/grievances/$id/resolution'
+      preLoaderRoute: typeof CitizenGrievancesIdResolutionRouteImport
+      parentRoute: typeof CitizenGrievancesIdRoute
     }
   }
 }
@@ -383,18 +650,62 @@ const AuthRouteChildren: AuthRouteChildren = {
 
 const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
 
+interface CitizenGrievancesIdRouteChildren {
+  CitizenGrievancesIdAppealRoute: typeof CitizenGrievancesIdAppealRoute
+  CitizenGrievancesIdResolutionRoute: typeof CitizenGrievancesIdResolutionRoute
+}
+
+const CitizenGrievancesIdRouteChildren: CitizenGrievancesIdRouteChildren = {
+  CitizenGrievancesIdAppealRoute: CitizenGrievancesIdAppealRoute,
+  CitizenGrievancesIdResolutionRoute: CitizenGrievancesIdResolutionRoute,
+}
+
+const CitizenGrievancesIdRouteWithChildren =
+  CitizenGrievancesIdRoute._addFileChildren(CitizenGrievancesIdRouteChildren)
+
 interface CitizenRouteChildren {
+  CitizenNotificationsRoute: typeof CitizenNotificationsRoute
+  CitizenProfileRoute: typeof CitizenProfileRoute
   CitizenIndexRoute: typeof CitizenIndexRoute
+  CitizenAppealsIdRoute: typeof CitizenAppealsIdRoute
+  CitizenGrievancesIdRoute: typeof CitizenGrievancesIdRouteWithChildren
   CitizenGrievancesNewRoute: typeof CitizenGrievancesNewRoute
 }
 
 const CitizenRouteChildren: CitizenRouteChildren = {
+  CitizenNotificationsRoute: CitizenNotificationsRoute,
+  CitizenProfileRoute: CitizenProfileRoute,
   CitizenIndexRoute: CitizenIndexRoute,
+  CitizenAppealsIdRoute: CitizenAppealsIdRoute,
+  CitizenGrievancesIdRoute: CitizenGrievancesIdRouteWithChildren,
   CitizenGrievancesNewRoute: CitizenGrievancesNewRoute,
 }
 
 const CitizenRouteWithChildren =
   CitizenRoute._addFileChildren(CitizenRouteChildren)
+
+interface OfficeRouteChildren {
+  OfficeAnalyticsRoute: typeof OfficeAnalyticsRoute
+  OfficeSystemicIssuesRoute: typeof OfficeSystemicIssuesRoute
+  OfficeIndexRoute: typeof OfficeIndexRoute
+  OfficeAppealsIdRoute: typeof OfficeAppealsIdRoute
+  OfficeCasesIdRoute: typeof OfficeCasesIdRoute
+  OfficeAppealsIndexRoute: typeof OfficeAppealsIndexRoute
+  OfficeCasesIndexRoute: typeof OfficeCasesIndexRoute
+}
+
+const OfficeRouteChildren: OfficeRouteChildren = {
+  OfficeAnalyticsRoute: OfficeAnalyticsRoute,
+  OfficeSystemicIssuesRoute: OfficeSystemicIssuesRoute,
+  OfficeIndexRoute: OfficeIndexRoute,
+  OfficeAppealsIdRoute: OfficeAppealsIdRoute,
+  OfficeCasesIdRoute: OfficeCasesIdRoute,
+  OfficeAppealsIndexRoute: OfficeAppealsIndexRoute,
+  OfficeCasesIndexRoute: OfficeCasesIndexRoute,
+}
+
+const OfficeRouteWithChildren =
+  OfficeRoute._addFileChildren(OfficeRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
@@ -404,6 +715,7 @@ const rootRouteChildren: RootRouteChildren = {
   CitizenRoute: CitizenRouteWithChildren,
   ContactRoute: ContactRoute,
   FaqRoute: FaqRoute,
+  OfficeRoute: OfficeRouteWithChildren,
   TrackRoute: TrackRoute,
   OfficersAppealsRoute: OfficersAppealsRoute,
   OfficersCentralRoute: OfficersCentralRoute,
