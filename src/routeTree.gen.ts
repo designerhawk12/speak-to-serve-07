@@ -26,6 +26,7 @@ import { Route as CitizenIndexRouteImport } from './routes/citizen.index'
 import { Route as CitizenNotificationsRouteImport } from './routes/citizen.notifications'
 import { Route as CitizenProfileRouteImport } from './routes/citizen.profile'
 import { Route as OfficeIndexRouteImport } from './routes/office.index'
+import { Route as OfficeAnalyticsRouteImport } from './routes/office.analytics'
 import { Route as OfficersAppealsRouteImport } from './routes/officers.appeals'
 import { Route as OfficersCentralRouteImport } from './routes/officers.central'
 import { Route as OfficersStatesRouteImport } from './routes/officers.states'
@@ -124,6 +125,11 @@ const OfficeIndexRoute = OfficeIndexRouteImport.update({
   path: '/',
   getParentRoute: () => OfficeRoute,
 } as any)
+const OfficeAnalyticsRoute = OfficeAnalyticsRouteImport.update({
+  id: '/analytics',
+  path: '/analytics',
+  getParentRoute: () => OfficeRoute,
+} as any)
 const OfficersAppealsRoute = OfficersAppealsRouteImport.update({
   id: '/officers/appeals',
   path: '/officers/appeals',
@@ -203,6 +209,7 @@ export interface FileRoutesByFullPath {
   '/auth/signup': typeof AuthSignupRoute
   '/citizen/notifications': typeof CitizenNotificationsRoute
   '/citizen/profile': typeof CitizenProfileRoute
+  '/office/analytics': typeof OfficeAnalyticsRoute
   '/officers/appeals': typeof OfficersAppealsRoute
   '/officers/central': typeof OfficersCentralRoute
   '/officers/states': typeof OfficersStatesRoute
@@ -232,6 +239,7 @@ export interface FileRoutesByTo {
   '/auth/signup': typeof AuthSignupRoute
   '/citizen/notifications': typeof CitizenNotificationsRoute
   '/citizen/profile': typeof CitizenProfileRoute
+  '/office/analytics': typeof OfficeAnalyticsRoute
   '/officers/appeals': typeof OfficersAppealsRoute
   '/officers/central': typeof OfficersCentralRoute
   '/officers/states': typeof OfficersStatesRoute
@@ -264,6 +272,7 @@ export interface FileRoutesById {
   '/auth/signup': typeof AuthSignupRoute
   '/citizen/notifications': typeof CitizenNotificationsRoute
   '/citizen/profile': typeof CitizenProfileRoute
+  '/office/analytics': typeof OfficeAnalyticsRoute
   '/officers/appeals': typeof OfficersAppealsRoute
   '/officers/central': typeof OfficersCentralRoute
   '/officers/states': typeof OfficersStatesRoute
@@ -297,6 +306,7 @@ export interface FileRouteTypes {
     | '/auth/signup'
     | '/citizen/notifications'
     | '/citizen/profile'
+    | '/office/analytics'
     | '/officers/appeals'
     | '/officers/central'
     | '/officers/states'
@@ -326,6 +336,7 @@ export interface FileRouteTypes {
     | '/auth/signup'
     | '/citizen/notifications'
     | '/citizen/profile'
+    | '/office/analytics'
     | '/officers/appeals'
     | '/officers/central'
     | '/officers/states'
@@ -357,6 +368,7 @@ export interface FileRouteTypes {
     | '/auth/signup'
     | '/citizen/notifications'
     | '/citizen/profile'
+    | '/office/analytics'
     | '/officers/appeals'
     | '/officers/central'
     | '/officers/states'
@@ -509,6 +521,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OfficeIndexRouteImport
       parentRoute: typeof OfficeRoute
     }
+    '/office/analytics': {
+      id: '/office/analytics'
+      path: '/analytics'
+      fullPath: '/office/analytics'
+      preLoaderRoute: typeof OfficeAnalyticsRouteImport
+      parentRoute: typeof OfficeRoute
+    }
     '/officers/appeals': {
       id: '/officers/appeals'
       path: '/officers/appeals'
@@ -647,6 +666,7 @@ const CitizenRouteWithChildren =
   CitizenRoute._addFileChildren(CitizenRouteChildren)
 
 interface OfficeRouteChildren {
+  OfficeAnalyticsRoute: typeof OfficeAnalyticsRoute
   OfficeIndexRoute: typeof OfficeIndexRoute
   OfficeAppealsIdRoute: typeof OfficeAppealsIdRoute
   OfficeCasesIdRoute: typeof OfficeCasesIdRoute
@@ -655,6 +675,7 @@ interface OfficeRouteChildren {
 }
 
 const OfficeRouteChildren: OfficeRouteChildren = {
+  OfficeAnalyticsRoute: OfficeAnalyticsRoute,
   OfficeIndexRoute: OfficeIndexRoute,
   OfficeAppealsIdRoute: OfficeAppealsIdRoute,
   OfficeCasesIdRoute: OfficeCasesIdRoute,
