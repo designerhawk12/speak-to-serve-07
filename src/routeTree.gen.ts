@@ -15,6 +15,9 @@ import { Route as AppealStatusRouteImport } from './routes/appeal-status'
 import { Route as ContactRouteImport } from './routes/contact'
 import { Route as FaqRouteImport } from './routes/faq'
 import { Route as TrackRouteImport } from './routes/track'
+import { Route as OfficersAppealsRouteImport } from './routes/officers.appeals'
+import { Route as OfficersCentralRouteImport } from './routes/officers.central'
+import { Route as OfficersStatesRouteImport } from './routes/officers.states'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -46,6 +49,21 @@ const TrackRoute = TrackRouteImport.update({
   path: '/track',
   getParentRoute: () => rootRouteImport,
 } as any)
+const OfficersAppealsRoute = OfficersAppealsRouteImport.update({
+  id: '/officers/appeals',
+  path: '/officers/appeals',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OfficersCentralRoute = OfficersCentralRouteImport.update({
+  id: '/officers/central',
+  path: '/officers/central',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OfficersStatesRoute = OfficersStatesRouteImport.update({
+  id: '/officers/states',
+  path: '/officers/states',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -54,6 +72,9 @@ export interface FileRoutesByFullPath {
   '/contact': typeof ContactRoute
   '/faq': typeof FaqRoute
   '/track': typeof TrackRoute
+  '/officers/appeals': typeof OfficersAppealsRoute
+  '/officers/central': typeof OfficersCentralRoute
+  '/officers/states': typeof OfficersStatesRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -62,6 +83,9 @@ export interface FileRoutesByTo {
   '/contact': typeof ContactRoute
   '/faq': typeof FaqRoute
   '/track': typeof TrackRoute
+  '/officers/appeals': typeof OfficersAppealsRoute
+  '/officers/central': typeof OfficersCentralRoute
+  '/officers/states': typeof OfficersStatesRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -71,12 +95,33 @@ export interface FileRoutesById {
   '/contact': typeof ContactRoute
   '/faq': typeof FaqRoute
   '/track': typeof TrackRoute
+  '/officers/appeals': typeof OfficersAppealsRoute
+  '/officers/central': typeof OfficersCentralRoute
+  '/officers/states': typeof OfficersStatesRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/about' | '/appeal-status' | '/contact' | '/faq' | '/track'
+  fullPaths:
+    | '/'
+    | '/about'
+    | '/appeal-status'
+    | '/contact'
+    | '/faq'
+    | '/track'
+    | '/officers/appeals'
+    | '/officers/central'
+    | '/officers/states'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/about' | '/appeal-status' | '/contact' | '/faq' | '/track'
+  to:
+    | '/'
+    | '/about'
+    | '/appeal-status'
+    | '/contact'
+    | '/faq'
+    | '/track'
+    | '/officers/appeals'
+    | '/officers/central'
+    | '/officers/states'
   id:
     | '__root__'
     | '/'
@@ -85,6 +130,9 @@ export interface FileRouteTypes {
     | '/contact'
     | '/faq'
     | '/track'
+    | '/officers/appeals'
+    | '/officers/central'
+    | '/officers/states'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -94,6 +142,9 @@ export interface RootRouteChildren {
   ContactRoute: typeof ContactRoute
   FaqRoute: typeof FaqRoute
   TrackRoute: typeof TrackRoute
+  OfficersAppealsRoute: typeof OfficersAppealsRoute
+  OfficersCentralRoute: typeof OfficersCentralRoute
+  OfficersStatesRoute: typeof OfficersStatesRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -140,6 +191,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TrackRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/officers/appeals': {
+      id: '/officers/appeals'
+      path: '/officers/appeals'
+      fullPath: '/officers/appeals'
+      preLoaderRoute: typeof OfficersAppealsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/officers/central': {
+      id: '/officers/central'
+      path: '/officers/central'
+      fullPath: '/officers/central'
+      preLoaderRoute: typeof OfficersCentralRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/officers/states': {
+      id: '/officers/states'
+      path: '/officers/states'
+      fullPath: '/officers/states'
+      preLoaderRoute: typeof OfficersStatesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -150,6 +222,9 @@ const rootRouteChildren: RootRouteChildren = {
   ContactRoute: ContactRoute,
   FaqRoute: FaqRoute,
   TrackRoute: TrackRoute,
+  OfficersAppealsRoute: OfficersAppealsRoute,
+  OfficersCentralRoute: OfficersCentralRoute,
+  OfficersStatesRoute: OfficersStatesRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
