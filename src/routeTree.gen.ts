@@ -33,6 +33,7 @@ import { Route as CitizenAppealsIdRouteImport } from './routes/citizen.appeals.$
 import { Route as CitizenGrievancesIdRouteImport } from './routes/citizen.grievances.$id'
 import { Route as CitizenGrievancesNewRouteImport } from './routes/citizen.grievances.new'
 import { Route as OfficeAppealsIndexRouteImport } from './routes/office.appeals.index'
+import { Route as OfficeAppealsIdRouteImport } from './routes/office.appeals.$id'
 import { Route as OfficeCasesIndexRouteImport } from './routes/office.cases.index'
 import { Route as OfficeCasesIdRouteImport } from './routes/office.cases.$id'
 import { Route as CitizenGrievancesIdAppealRouteImport } from './routes/citizen.grievances.$id.appeal'
@@ -158,6 +159,11 @@ const OfficeAppealsIndexRoute = OfficeAppealsIndexRouteImport.update({
   path: '/appeals/',
   getParentRoute: () => OfficeRoute,
 } as any)
+const OfficeAppealsIdRoute = OfficeAppealsIdRouteImport.update({
+  id: '/appeals/$id',
+  path: '/appeals/$id',
+  getParentRoute: () => OfficeRoute,
+} as any)
 const OfficeCasesIndexRoute = OfficeCasesIndexRouteImport.update({
   id: '/cases/',
   path: '/cases/',
@@ -205,6 +211,7 @@ export interface FileRoutesByFullPath {
   '/citizen/appeals/$id': typeof CitizenAppealsIdRoute
   '/citizen/grievances/$id': typeof CitizenGrievancesIdRouteWithChildren
   '/citizen/grievances/new': typeof CitizenGrievancesNewRoute
+  '/office/appeals/$id': typeof OfficeAppealsIdRoute
   '/office/cases/$id': typeof OfficeCasesIdRoute
   '/office/appeals/': typeof OfficeAppealsIndexRoute
   '/office/cases/': typeof OfficeCasesIndexRoute
@@ -233,6 +240,7 @@ export interface FileRoutesByTo {
   '/citizen/appeals/$id': typeof CitizenAppealsIdRoute
   '/citizen/grievances/$id': typeof CitizenGrievancesIdRouteWithChildren
   '/citizen/grievances/new': typeof CitizenGrievancesNewRoute
+  '/office/appeals/$id': typeof OfficeAppealsIdRoute
   '/office/cases/$id': typeof OfficeCasesIdRoute
   '/office/appeals': typeof OfficeAppealsIndexRoute
   '/office/cases': typeof OfficeCasesIndexRoute
@@ -264,6 +272,7 @@ export interface FileRoutesById {
   '/citizen/appeals/$id': typeof CitizenAppealsIdRoute
   '/citizen/grievances/$id': typeof CitizenGrievancesIdRouteWithChildren
   '/citizen/grievances/new': typeof CitizenGrievancesNewRoute
+  '/office/appeals/$id': typeof OfficeAppealsIdRoute
   '/office/cases/$id': typeof OfficeCasesIdRoute
   '/office/appeals/': typeof OfficeAppealsIndexRoute
   '/office/cases/': typeof OfficeCasesIndexRoute
@@ -296,6 +305,7 @@ export interface FileRouteTypes {
     | '/citizen/appeals/$id'
     | '/citizen/grievances/$id'
     | '/citizen/grievances/new'
+    | '/office/appeals/$id'
     | '/office/cases/$id'
     | '/office/appeals/'
     | '/office/cases/'
@@ -324,6 +334,7 @@ export interface FileRouteTypes {
     | '/citizen/appeals/$id'
     | '/citizen/grievances/$id'
     | '/citizen/grievances/new'
+    | '/office/appeals/$id'
     | '/office/cases/$id'
     | '/office/appeals'
     | '/office/cases'
@@ -354,6 +365,7 @@ export interface FileRouteTypes {
     | '/citizen/appeals/$id'
     | '/citizen/grievances/$id'
     | '/citizen/grievances/new'
+    | '/office/appeals/$id'
     | '/office/cases/$id'
     | '/office/appeals/'
     | '/office/cases/'
@@ -546,6 +558,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OfficeAppealsIndexRouteImport
       parentRoute: typeof OfficeRoute
     }
+    '/office/appeals/$id': {
+      id: '/office/appeals/$id'
+      path: '/appeals/$id'
+      fullPath: '/office/appeals/$id'
+      preLoaderRoute: typeof OfficeAppealsIdRouteImport
+      parentRoute: typeof OfficeRoute
+    }
     '/office/cases/': {
       id: '/office/cases/'
       path: '/cases'
@@ -629,6 +648,7 @@ const CitizenRouteWithChildren =
 
 interface OfficeRouteChildren {
   OfficeIndexRoute: typeof OfficeIndexRoute
+  OfficeAppealsIdRoute: typeof OfficeAppealsIdRoute
   OfficeCasesIdRoute: typeof OfficeCasesIdRoute
   OfficeAppealsIndexRoute: typeof OfficeAppealsIndexRoute
   OfficeCasesIndexRoute: typeof OfficeCasesIndexRoute
@@ -636,6 +656,7 @@ interface OfficeRouteChildren {
 
 const OfficeRouteChildren: OfficeRouteChildren = {
   OfficeIndexRoute: OfficeIndexRoute,
+  OfficeAppealsIdRoute: OfficeAppealsIdRoute,
   OfficeCasesIdRoute: OfficeCasesIdRoute,
   OfficeAppealsIndexRoute: OfficeAppealsIndexRoute,
   OfficeCasesIndexRoute: OfficeCasesIndexRoute,
