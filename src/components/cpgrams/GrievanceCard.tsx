@@ -51,14 +51,7 @@ export function GrievanceCard({ grievance: g, variant = "citizen", className }: 
           )}
         </dl>
 
-        {g.sla && (
-          <SlaIndicator
-            state={g.sla.state}
-            label={g.sla.label}
-            dueLabel={g.sla.dueLabel}
-            percentElapsed={g.sla.percentElapsed}
-          />
-        )}
+        {g.sla && <SlaIndicator {...g.sla} />}
 
         {g.actionRequired && (
           <p className="rounded-md border border-warning/35 bg-warning-surface px-3 py-2 text-sm text-warning-foreground">
