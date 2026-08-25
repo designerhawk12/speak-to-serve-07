@@ -30,7 +30,7 @@ export const Route = createFileRoute("/office/systemic-issues")({
       { property: "og:description", content: "Patterns across grievances, for supervisors and nodal officers." },
     ],
   }),
-  component: SystemicIssues;
+  component: SystemicIssues,
 });
 
 function SystemicIssues() {
