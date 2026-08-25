@@ -82,7 +82,7 @@ function OfficeCaseDetail() {
           <AiSuggestionCard
             suggestion={{
               id: "ai-1",
-              kind: "routing",
+              kind: "office_routing",
               title: "Possible routing: Pension Disbursement Cell",
               body: "The description mentions bank credit failure after release, which usually sits with the disbursement cell.",
               basis: "Matched wording in the citizen's own description. Not a government finding.",

@@ -49,7 +49,7 @@ function OfficeAppealDetail() {
       <AiSuggestionCard
         suggestion={{
           id: "ai-appeal-1",
-          kind: "summary",
+          kind: "drafting_help",
           title: "Draft summary of the disagreement",
           body: "Office states arrears were released on 29 Aug; citizen reports no bank credit as of 08 Sep.",
           basis: "Derived from recorded case events only.",

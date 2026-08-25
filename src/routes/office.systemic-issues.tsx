@@ -51,7 +51,7 @@ function SystemicIssues() {
       <AiSuggestionCard
         suggestion={{
           id: "ai-cluster-1",
-          kind: "clustering",
+          kind: "systemic_pattern",
           title: "Possible cluster detected",
           body: "Several pension cases share the phrase 'released but no credit'. A supervisor should confirm.",
           basis: "Text similarity across citizen descriptions only.",
