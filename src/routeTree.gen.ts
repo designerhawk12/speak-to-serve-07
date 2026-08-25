@@ -27,6 +27,7 @@ import { Route as CitizenNotificationsRouteImport } from './routes/citizen.notif
 import { Route as CitizenProfileRouteImport } from './routes/citizen.profile'
 import { Route as OfficeIndexRouteImport } from './routes/office.index'
 import { Route as OfficeAnalyticsRouteImport } from './routes/office.analytics'
+import { Route as OfficeSystemicIssuesRouteImport } from './routes/office.systemic-issues'
 import { Route as OfficersAppealsRouteImport } from './routes/officers.appeals'
 import { Route as OfficersCentralRouteImport } from './routes/officers.central'
 import { Route as OfficersStatesRouteImport } from './routes/officers.states'
@@ -130,6 +131,11 @@ const OfficeAnalyticsRoute = OfficeAnalyticsRouteImport.update({
   path: '/analytics',
   getParentRoute: () => OfficeRoute,
 } as any)
+const OfficeSystemicIssuesRoute = OfficeSystemicIssuesRouteImport.update({
+  id: '/systemic-issues',
+  path: '/systemic-issues',
+  getParentRoute: () => OfficeRoute,
+} as any)
 const OfficersAppealsRoute = OfficersAppealsRouteImport.update({
   id: '/officers/appeals',
   path: '/officers/appeals',
@@ -210,6 +216,7 @@ export interface FileRoutesByFullPath {
   '/citizen/notifications': typeof CitizenNotificationsRoute
   '/citizen/profile': typeof CitizenProfileRoute
   '/office/analytics': typeof OfficeAnalyticsRoute
+  '/office/systemic-issues': typeof OfficeSystemicIssuesRoute
   '/officers/appeals': typeof OfficersAppealsRoute
   '/officers/central': typeof OfficersCentralRoute
   '/officers/states': typeof OfficersStatesRoute
@@ -240,6 +247,7 @@ export interface FileRoutesByTo {
   '/citizen/notifications': typeof CitizenNotificationsRoute
   '/citizen/profile': typeof CitizenProfileRoute
   '/office/analytics': typeof OfficeAnalyticsRoute
+  '/office/systemic-issues': typeof OfficeSystemicIssuesRoute
   '/officers/appeals': typeof OfficersAppealsRoute
   '/officers/central': typeof OfficersCentralRoute
   '/officers/states': typeof OfficersStatesRoute
@@ -273,6 +281,7 @@ export interface FileRoutesById {
   '/citizen/notifications': typeof CitizenNotificationsRoute
   '/citizen/profile': typeof CitizenProfileRoute
   '/office/analytics': typeof OfficeAnalyticsRoute
+  '/office/systemic-issues': typeof OfficeSystemicIssuesRoute
   '/officers/appeals': typeof OfficersAppealsRoute
   '/officers/central': typeof OfficersCentralRoute
   '/officers/states': typeof OfficersStatesRoute
@@ -307,6 +316,7 @@ export interface FileRouteTypes {
     | '/citizen/notifications'
     | '/citizen/profile'
     | '/office/analytics'
+    | '/office/systemic-issues'
     | '/officers/appeals'
     | '/officers/central'
     | '/officers/states'
@@ -337,6 +347,7 @@ export interface FileRouteTypes {
     | '/citizen/notifications'
     | '/citizen/profile'
     | '/office/analytics'
+    | '/office/systemic-issues'
     | '/officers/appeals'
     | '/officers/central'
     | '/officers/states'
@@ -369,6 +380,7 @@ export interface FileRouteTypes {
     | '/citizen/notifications'
     | '/citizen/profile'
     | '/office/analytics'
+    | '/office/systemic-issues'
     | '/officers/appeals'
     | '/officers/central'
     | '/officers/states'
@@ -528,6 +540,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OfficeAnalyticsRouteImport
       parentRoute: typeof OfficeRoute
     }
+    '/office/systemic-issues': {
+      id: '/office/systemic-issues'
+      path: '/systemic-issues'
+      fullPath: '/office/systemic-issues'
+      preLoaderRoute: typeof OfficeSystemicIssuesRouteImport
+      parentRoute: typeof OfficeRoute
+    }
     '/officers/appeals': {
       id: '/officers/appeals'
       path: '/officers/appeals'
@@ -667,6 +686,7 @@ const CitizenRouteWithChildren =
 
 interface OfficeRouteChildren {
   OfficeAnalyticsRoute: typeof OfficeAnalyticsRoute
+  OfficeSystemicIssuesRoute: typeof OfficeSystemicIssuesRoute
   OfficeIndexRoute: typeof OfficeIndexRoute
   OfficeAppealsIdRoute: typeof OfficeAppealsIdRoute
   OfficeCasesIdRoute: typeof OfficeCasesIdRoute
@@ -676,6 +696,7 @@ interface OfficeRouteChildren {
 
 const OfficeRouteChildren: OfficeRouteChildren = {
   OfficeAnalyticsRoute: OfficeAnalyticsRoute,
+  OfficeSystemicIssuesRoute: OfficeSystemicIssuesRoute,
   OfficeIndexRoute: OfficeIndexRoute,
   OfficeAppealsIdRoute: OfficeAppealsIdRoute,
   OfficeCasesIdRoute: OfficeCasesIdRoute,
