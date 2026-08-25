@@ -64,7 +64,11 @@ export function FilterBar({
 
       <div className="flex flex-wrap gap-2 md:flex-nowrap">
         {filters.map((f) => (
-          <Select key={f.id} value={f.value} onValueChange={(v) => onFilterChange?.(f.id, v)}>
+          <Select
+            key={f.id}
+            {...(f.value !== undefined ? { value: f.value } : {})}
+            onValueChange={(v) => onFilterChange?.(f.id, v)}
+          >
             <SelectTrigger className="min-w-[9rem]" aria-label={f.label}>
               <SelectValue placeholder={f.label} />
             </SelectTrigger>
