@@ -4,7 +4,7 @@ import type { DataTableColumn } from "@/components/cpgrams";
 import { SAMPLE_GRIEVANCES } from "@/lib/cpgrams/sample-data";
 import { ADMIN_STATUS_META, CITIZEN_OUTCOME_META, type GrievanceSummary } from "@/lib/cpgrams/types";
 
-export const Route = createFileRoute("/office/cases")({
+export const Route = createFileRoute("/office/cases/")({
   head: () => ({
     meta: [
       { title: "Cases — CPGRAMS Resolution Workspace" },
