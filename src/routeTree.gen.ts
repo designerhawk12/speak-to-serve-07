@@ -12,9 +12,14 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as AppealStatusRouteImport } from './routes/appeal-status'
+import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ContactRouteImport } from './routes/contact'
 import { Route as FaqRouteImport } from './routes/faq'
 import { Route as TrackRouteImport } from './routes/track'
+import { Route as AuthForgotPasswordRouteImport } from './routes/auth.forgot-password'
+import { Route as AuthLoginRouteImport } from './routes/auth.login'
+import { Route as AuthOfficerLoginRouteImport } from './routes/auth.officer-login'
+import { Route as AuthSignupRouteImport } from './routes/auth.signup'
 import { Route as OfficersAppealsRouteImport } from './routes/officers.appeals'
 import { Route as OfficersCentralRouteImport } from './routes/officers.central'
 import { Route as OfficersStatesRouteImport } from './routes/officers.states'
@@ -34,6 +39,11 @@ const AppealStatusRoute = AppealStatusRouteImport.update({
   path: '/appeal-status',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ContactRoute = ContactRouteImport.update({
   id: '/contact',
   path: '/contact',
@@ -48,6 +58,26 @@ const TrackRoute = TrackRouteImport.update({
   id: '/track',
   path: '/track',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthForgotPasswordRoute = AuthForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthLoginRoute = AuthLoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthOfficerLoginRoute = AuthOfficerLoginRouteImport.update({
+  id: '/officer-login',
+  path: '/officer-login',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthSignupRoute = AuthSignupRouteImport.update({
+  id: '/signup',
+  path: '/signup',
+  getParentRoute: () => AuthRoute,
 } as any)
 const OfficersAppealsRoute = OfficersAppealsRouteImport.update({
   id: '/officers/appeals',
@@ -69,9 +99,14 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/appeal-status': typeof AppealStatusRoute
+  '/auth': typeof AuthRouteWithChildren
   '/contact': typeof ContactRoute
   '/faq': typeof FaqRoute
   '/track': typeof TrackRoute
+  '/auth/forgot-password': typeof AuthForgotPasswordRoute
+  '/auth/login': typeof AuthLoginRoute
+  '/auth/officer-login': typeof AuthOfficerLoginRoute
+  '/auth/signup': typeof AuthSignupRoute
   '/officers/appeals': typeof OfficersAppealsRoute
   '/officers/central': typeof OfficersCentralRoute
   '/officers/states': typeof OfficersStatesRoute
@@ -80,9 +115,14 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/appeal-status': typeof AppealStatusRoute
+  '/auth': typeof AuthRouteWithChildren
   '/contact': typeof ContactRoute
   '/faq': typeof FaqRoute
   '/track': typeof TrackRoute
+  '/auth/forgot-password': typeof AuthForgotPasswordRoute
+  '/auth/login': typeof AuthLoginRoute
+  '/auth/officer-login': typeof AuthOfficerLoginRoute
+  '/auth/signup': typeof AuthSignupRoute
   '/officers/appeals': typeof OfficersAppealsRoute
   '/officers/central': typeof OfficersCentralRoute
   '/officers/states': typeof OfficersStatesRoute
@@ -92,9 +132,14 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/appeal-status': typeof AppealStatusRoute
+  '/auth': typeof AuthRouteWithChildren
   '/contact': typeof ContactRoute
   '/faq': typeof FaqRoute
   '/track': typeof TrackRoute
+  '/auth/forgot-password': typeof AuthForgotPasswordRoute
+  '/auth/login': typeof AuthLoginRoute
+  '/auth/officer-login': typeof AuthOfficerLoginRoute
+  '/auth/signup': typeof AuthSignupRoute
   '/officers/appeals': typeof OfficersAppealsRoute
   '/officers/central': typeof OfficersCentralRoute
   '/officers/states': typeof OfficersStatesRoute
@@ -105,9 +150,14 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/appeal-status'
+    | '/auth'
     | '/contact'
     | '/faq'
     | '/track'
+    | '/auth/forgot-password'
+    | '/auth/login'
+    | '/auth/officer-login'
+    | '/auth/signup'
     | '/officers/appeals'
     | '/officers/central'
     | '/officers/states'
@@ -116,9 +166,14 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/appeal-status'
+    | '/auth'
     | '/contact'
     | '/faq'
     | '/track'
+    | '/auth/forgot-password'
+    | '/auth/login'
+    | '/auth/officer-login'
+    | '/auth/signup'
     | '/officers/appeals'
     | '/officers/central'
     | '/officers/states'
@@ -127,9 +182,14 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/appeal-status'
+    | '/auth'
     | '/contact'
     | '/faq'
     | '/track'
+    | '/auth/forgot-password'
+    | '/auth/login'
+    | '/auth/officer-login'
+    | '/auth/signup'
     | '/officers/appeals'
     | '/officers/central'
     | '/officers/states'
@@ -139,6 +199,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
   AppealStatusRoute: typeof AppealStatusRoute
+  AuthRoute: typeof AuthRouteWithChildren
   ContactRoute: typeof ContactRoute
   FaqRoute: typeof FaqRoute
   TrackRoute: typeof TrackRoute
@@ -170,6 +231,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppealStatusRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/contact': {
       id: '/contact'
       path: '/contact'
@@ -190,6 +258,34 @@ declare module '@tanstack/react-router' {
       fullPath: '/track'
       preLoaderRoute: typeof TrackRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/auth/forgot-password': {
+      id: '/auth/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/auth/forgot-password'
+      preLoaderRoute: typeof AuthForgotPasswordRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/auth/login': {
+      id: '/auth/login'
+      path: '/login'
+      fullPath: '/auth/login'
+      preLoaderRoute: typeof AuthLoginRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/auth/officer-login': {
+      id: '/auth/officer-login'
+      path: '/officer-login'
+      fullPath: '/auth/officer-login'
+      preLoaderRoute: typeof AuthOfficerLoginRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/auth/signup': {
+      id: '/auth/signup'
+      path: '/signup'
+      fullPath: '/auth/signup'
+      preLoaderRoute: typeof AuthSignupRouteImport
+      parentRoute: typeof AuthRoute
     }
     '/officers/appeals': {
       id: '/officers/appeals'
@@ -215,10 +311,27 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AuthRouteChildren {
+  AuthForgotPasswordRoute: typeof AuthForgotPasswordRoute
+  AuthLoginRoute: typeof AuthLoginRoute
+  AuthOfficerLoginRoute: typeof AuthOfficerLoginRoute
+  AuthSignupRoute: typeof AuthSignupRoute
+}
+
+const AuthRouteChildren: AuthRouteChildren = {
+  AuthForgotPasswordRoute: AuthForgotPasswordRoute,
+  AuthLoginRoute: AuthLoginRoute,
+  AuthOfficerLoginRoute: AuthOfficerLoginRoute,
+  AuthSignupRoute: AuthSignupRoute,
+}
+
+const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
   AppealStatusRoute: AppealStatusRoute,
+  AuthRoute: AuthRouteWithChildren,
   ContactRoute: ContactRoute,
   FaqRoute: FaqRoute,
   TrackRoute: TrackRoute,
