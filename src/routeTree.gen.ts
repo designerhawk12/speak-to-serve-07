@@ -25,6 +25,7 @@ import { Route as AuthSignupRouteImport } from './routes/auth.signup'
 import { Route as CitizenIndexRouteImport } from './routes/citizen.index'
 import { Route as CitizenNotificationsRouteImport } from './routes/citizen.notifications'
 import { Route as CitizenProfileRouteImport } from './routes/citizen.profile'
+import { Route as OfficeIndexRouteImport } from './routes/office.index'
 import { Route as OfficersAppealsRouteImport } from './routes/officers.appeals'
 import { Route as OfficersCentralRouteImport } from './routes/officers.central'
 import { Route as OfficersStatesRouteImport } from './routes/officers.states'
@@ -114,6 +115,11 @@ const CitizenProfileRoute = CitizenProfileRouteImport.update({
   path: '/profile',
   getParentRoute: () => CitizenRoute,
 } as any)
+const OfficeIndexRoute = OfficeIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => OfficeRoute,
+} as any)
 const OfficersAppealsRoute = OfficersAppealsRouteImport.update({
   id: '/officers/appeals',
   path: '/officers/appeals',
@@ -165,7 +171,7 @@ export interface FileRoutesByFullPath {
   '/citizen': typeof CitizenRouteWithChildren
   '/contact': typeof ContactRoute
   '/faq': typeof FaqRoute
-  '/office': typeof OfficeRoute
+  '/office': typeof OfficeRouteWithChildren
   '/track': typeof TrackRoute
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/login': typeof AuthLoginRoute
@@ -177,6 +183,7 @@ export interface FileRoutesByFullPath {
   '/officers/central': typeof OfficersCentralRoute
   '/officers/states': typeof OfficersStatesRoute
   '/citizen/': typeof CitizenIndexRoute
+  '/office/': typeof OfficeIndexRoute
   '/citizen/appeals/$id': typeof CitizenAppealsIdRoute
   '/citizen/grievances/$id': typeof CitizenGrievancesIdRouteWithChildren
   '/citizen/grievances/new': typeof CitizenGrievancesNewRoute
@@ -190,7 +197,6 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRouteWithChildren
   '/contact': typeof ContactRoute
   '/faq': typeof FaqRoute
-  '/office': typeof OfficeRoute
   '/track': typeof TrackRoute
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/login': typeof AuthLoginRoute
@@ -202,6 +208,7 @@ export interface FileRoutesByTo {
   '/officers/central': typeof OfficersCentralRoute
   '/officers/states': typeof OfficersStatesRoute
   '/citizen': typeof CitizenIndexRoute
+  '/office': typeof OfficeIndexRoute
   '/citizen/appeals/$id': typeof CitizenAppealsIdRoute
   '/citizen/grievances/$id': typeof CitizenGrievancesIdRouteWithChildren
   '/citizen/grievances/new': typeof CitizenGrievancesNewRoute
@@ -217,7 +224,7 @@ export interface FileRoutesById {
   '/citizen': typeof CitizenRouteWithChildren
   '/contact': typeof ContactRoute
   '/faq': typeof FaqRoute
-  '/office': typeof OfficeRoute
+  '/office': typeof OfficeRouteWithChildren
   '/track': typeof TrackRoute
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/login': typeof AuthLoginRoute
@@ -229,6 +236,7 @@ export interface FileRoutesById {
   '/officers/central': typeof OfficersCentralRoute
   '/officers/states': typeof OfficersStatesRoute
   '/citizen/': typeof CitizenIndexRoute
+  '/office/': typeof OfficeIndexRoute
   '/citizen/appeals/$id': typeof CitizenAppealsIdRoute
   '/citizen/grievances/$id': typeof CitizenGrievancesIdRouteWithChildren
   '/citizen/grievances/new': typeof CitizenGrievancesNewRoute
@@ -257,6 +265,7 @@ export interface FileRouteTypes {
     | '/officers/central'
     | '/officers/states'
     | '/citizen/'
+    | '/office/'
     | '/citizen/appeals/$id'
     | '/citizen/grievances/$id'
     | '/citizen/grievances/new'
@@ -270,7 +279,6 @@ export interface FileRouteTypes {
     | '/auth'
     | '/contact'
     | '/faq'
-    | '/office'
     | '/track'
     | '/auth/forgot-password'
     | '/auth/login'
@@ -282,6 +290,7 @@ export interface FileRouteTypes {
     | '/officers/central'
     | '/officers/states'
     | '/citizen'
+    | '/office'
     | '/citizen/appeals/$id'
     | '/citizen/grievances/$id'
     | '/citizen/grievances/new'
@@ -308,6 +317,7 @@ export interface FileRouteTypes {
     | '/officers/central'
     | '/officers/states'
     | '/citizen/'
+    | '/office/'
     | '/citizen/appeals/$id'
     | '/citizen/grievances/$id'
     | '/citizen/grievances/new'
@@ -323,7 +333,7 @@ export interface RootRouteChildren {
   CitizenRoute: typeof CitizenRouteWithChildren
   ContactRoute: typeof ContactRoute
   FaqRoute: typeof FaqRoute
-  OfficeRoute: typeof OfficeRoute
+  OfficeRoute: typeof OfficeRouteWithChildren
   TrackRoute: typeof TrackRoute
   OfficersAppealsRoute: typeof OfficersAppealsRoute
   OfficersCentralRoute: typeof OfficersCentralRoute
@@ -444,6 +454,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CitizenProfileRouteImport
       parentRoute: typeof CitizenRoute
     }
+    '/office/': {
+      id: '/office/'
+      path: '/'
+      fullPath: '/office/'
+      preLoaderRoute: typeof OfficeIndexRouteImport
+      parentRoute: typeof OfficeRoute
+    }
     '/officers/appeals': {
       id: '/officers/appeals'
       path: '/officers/appeals'
@@ -553,6 +570,17 @@ const CitizenRouteChildren: CitizenRouteChildren = {
 const CitizenRouteWithChildren =
   CitizenRoute._addFileChildren(CitizenRouteChildren)
 
+interface OfficeRouteChildren {
+  OfficeIndexRoute: typeof OfficeIndexRoute
+}
+
+const OfficeRouteChildren: OfficeRouteChildren = {
+  OfficeIndexRoute: OfficeIndexRoute,
+}
+
+const OfficeRouteWithChildren =
+  OfficeRoute._addFileChildren(OfficeRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
@@ -561,7 +589,7 @@ const rootRouteChildren: RootRouteChildren = {
   CitizenRoute: CitizenRouteWithChildren,
   ContactRoute: ContactRoute,
   FaqRoute: FaqRoute,
-  OfficeRoute: OfficeRoute,
+  OfficeRoute: OfficeRouteWithChildren,
   TrackRoute: TrackRoute,
   OfficersAppealsRoute: OfficersAppealsRoute,
   OfficersCentralRoute: OfficersCentralRoute,
