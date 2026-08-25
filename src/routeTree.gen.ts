@@ -23,6 +23,7 @@ import { Route as AuthOfficerLoginRouteImport } from './routes/auth.officer-logi
 import { Route as AuthSignupRouteImport } from './routes/auth.signup'
 import { Route as CitizenIndexRouteImport } from './routes/citizen.index'
 import { Route as CitizenNotificationsRouteImport } from './routes/citizen.notifications'
+import { Route as CitizenProfileRouteImport } from './routes/citizen.profile'
 import { Route as OfficersAppealsRouteImport } from './routes/officers.appeals'
 import { Route as OfficersCentralRouteImport } from './routes/officers.central'
 import { Route as OfficersStatesRouteImport } from './routes/officers.states'
@@ -102,6 +103,11 @@ const CitizenNotificationsRoute = CitizenNotificationsRouteImport.update({
   path: '/notifications',
   getParentRoute: () => CitizenRoute,
 } as any)
+const CitizenProfileRoute = CitizenProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => CitizenRoute,
+} as any)
 const OfficersAppealsRoute = OfficersAppealsRouteImport.update({
   id: '/officers/appeals',
   path: '/officers/appeals',
@@ -159,6 +165,7 @@ export interface FileRoutesByFullPath {
   '/auth/officer-login': typeof AuthOfficerLoginRoute
   '/auth/signup': typeof AuthSignupRoute
   '/citizen/notifications': typeof CitizenNotificationsRoute
+  '/citizen/profile': typeof CitizenProfileRoute
   '/officers/appeals': typeof OfficersAppealsRoute
   '/officers/central': typeof OfficersCentralRoute
   '/officers/states': typeof OfficersStatesRoute
@@ -182,6 +189,7 @@ export interface FileRoutesByTo {
   '/auth/officer-login': typeof AuthOfficerLoginRoute
   '/auth/signup': typeof AuthSignupRoute
   '/citizen/notifications': typeof CitizenNotificationsRoute
+  '/citizen/profile': typeof CitizenProfileRoute
   '/officers/appeals': typeof OfficersAppealsRoute
   '/officers/central': typeof OfficersCentralRoute
   '/officers/states': typeof OfficersStatesRoute
@@ -207,6 +215,7 @@ export interface FileRoutesById {
   '/auth/officer-login': typeof AuthOfficerLoginRoute
   '/auth/signup': typeof AuthSignupRoute
   '/citizen/notifications': typeof CitizenNotificationsRoute
+  '/citizen/profile': typeof CitizenProfileRoute
   '/officers/appeals': typeof OfficersAppealsRoute
   '/officers/central': typeof OfficersCentralRoute
   '/officers/states': typeof OfficersStatesRoute
@@ -233,6 +242,7 @@ export interface FileRouteTypes {
     | '/auth/officer-login'
     | '/auth/signup'
     | '/citizen/notifications'
+    | '/citizen/profile'
     | '/officers/appeals'
     | '/officers/central'
     | '/officers/states'
@@ -256,6 +266,7 @@ export interface FileRouteTypes {
     | '/auth/officer-login'
     | '/auth/signup'
     | '/citizen/notifications'
+    | '/citizen/profile'
     | '/officers/appeals'
     | '/officers/central'
     | '/officers/states'
@@ -280,6 +291,7 @@ export interface FileRouteTypes {
     | '/auth/officer-login'
     | '/auth/signup'
     | '/citizen/notifications'
+    | '/citizen/profile'
     | '/officers/appeals'
     | '/officers/central'
     | '/officers/states'
@@ -405,6 +417,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CitizenNotificationsRouteImport
       parentRoute: typeof CitizenRoute
     }
+    '/citizen/profile': {
+      id: '/citizen/profile'
+      path: '/profile'
+      fullPath: '/citizen/profile'
+      preLoaderRoute: typeof CitizenProfileRouteImport
+      parentRoute: typeof CitizenRoute
+    }
     '/officers/appeals': {
       id: '/officers/appeals'
       path: '/officers/appeals'
@@ -495,6 +514,7 @@ const CitizenGrievancesIdRouteWithChildren =
 
 interface CitizenRouteChildren {
   CitizenNotificationsRoute: typeof CitizenNotificationsRoute
+  CitizenProfileRoute: typeof CitizenProfileRoute
   CitizenIndexRoute: typeof CitizenIndexRoute
   CitizenAppealsIdRoute: typeof CitizenAppealsIdRoute
   CitizenGrievancesIdRoute: typeof CitizenGrievancesIdRouteWithChildren
@@ -503,6 +523,7 @@ interface CitizenRouteChildren {
 
 const CitizenRouteChildren: CitizenRouteChildren = {
   CitizenNotificationsRoute: CitizenNotificationsRoute,
+  CitizenProfileRoute: CitizenProfileRoute,
   CitizenIndexRoute: CitizenIndexRoute,
   CitizenAppealsIdRoute: CitizenAppealsIdRoute,
   CitizenGrievancesIdRoute: CitizenGrievancesIdRouteWithChildren,
