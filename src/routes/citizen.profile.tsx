@@ -43,7 +43,7 @@ function CitizenProfile() {
             <label htmlFor="p-email" className="text-sm font-semibold">
               Email
             </label>
-            <Input id="p-email" type="email" defaultValue={user?.email ?? ""} />
+            <Input id="p-email" type="email" placeholder="you@example.com" />
           </div>
           <div className="space-y-1.5">
             <label htmlFor="p-phone" className="text-sm font-semibold">
