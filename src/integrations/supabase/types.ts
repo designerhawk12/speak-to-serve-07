@@ -1037,22 +1037,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      can_view_appeal: { Args: { _a: string }; Returns: boolean }
-      can_view_grievance: { Args: { _g: string }; Returns: boolean }
-      can_view_request: { Args: { _r: string }; Returns: boolean }
-      current_org: { Args: { _user_id: string }; Returns: string }
-      current_role_of: {
-        Args: { _user_id: string }
-        Returns: Database["public"]["Enums"]["app_role"]
-      }
-      has_role: {
-        Args: {
-          _role: Database["public"]["Enums"]["app_role"]
-          _user_id: string
-        }
-        Returns: boolean
-      }
-      org_subtree: { Args: { _root: string }; Returns: string[] }
+      [_ in never]: never
     }
     Enums: {
       actor_type: "citizen" | "officer" | "system" | "ai_advisor"
