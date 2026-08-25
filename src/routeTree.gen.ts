@@ -16,6 +16,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as CitizenRouteImport } from './routes/citizen'
 import { Route as ContactRouteImport } from './routes/contact'
 import { Route as FaqRouteImport } from './routes/faq'
+import { Route as OfficeRouteImport } from './routes/office'
 import { Route as TrackRouteImport } from './routes/track'
 import { Route as AuthForgotPasswordRouteImport } from './routes/auth.forgot-password'
 import { Route as AuthLoginRouteImport } from './routes/auth.login'
@@ -66,6 +67,11 @@ const ContactRoute = ContactRouteImport.update({
 const FaqRoute = FaqRouteImport.update({
   id: '/faq',
   path: '/faq',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OfficeRoute = OfficeRouteImport.update({
+  id: '/office',
+  path: '/office',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TrackRoute = TrackRouteImport.update({
@@ -159,6 +165,7 @@ export interface FileRoutesByFullPath {
   '/citizen': typeof CitizenRouteWithChildren
   '/contact': typeof ContactRoute
   '/faq': typeof FaqRoute
+  '/office': typeof OfficeRoute
   '/track': typeof TrackRoute
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/login': typeof AuthLoginRoute
@@ -183,6 +190,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRouteWithChildren
   '/contact': typeof ContactRoute
   '/faq': typeof FaqRoute
+  '/office': typeof OfficeRoute
   '/track': typeof TrackRoute
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/login': typeof AuthLoginRoute
@@ -209,6 +217,7 @@ export interface FileRoutesById {
   '/citizen': typeof CitizenRouteWithChildren
   '/contact': typeof ContactRoute
   '/faq': typeof FaqRoute
+  '/office': typeof OfficeRoute
   '/track': typeof TrackRoute
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/login': typeof AuthLoginRoute
@@ -236,6 +245,7 @@ export interface FileRouteTypes {
     | '/citizen'
     | '/contact'
     | '/faq'
+    | '/office'
     | '/track'
     | '/auth/forgot-password'
     | '/auth/login'
@@ -260,6 +270,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/contact'
     | '/faq'
+    | '/office'
     | '/track'
     | '/auth/forgot-password'
     | '/auth/login'
@@ -285,6 +296,7 @@ export interface FileRouteTypes {
     | '/citizen'
     | '/contact'
     | '/faq'
+    | '/office'
     | '/track'
     | '/auth/forgot-password'
     | '/auth/login'
@@ -311,6 +323,7 @@ export interface RootRouteChildren {
   CitizenRoute: typeof CitizenRouteWithChildren
   ContactRoute: typeof ContactRoute
   FaqRoute: typeof FaqRoute
+  OfficeRoute: typeof OfficeRoute
   TrackRoute: typeof TrackRoute
   OfficersAppealsRoute: typeof OfficersAppealsRoute
   OfficersCentralRoute: typeof OfficersCentralRoute
@@ -366,6 +379,13 @@ declare module '@tanstack/react-router' {
       path: '/faq'
       fullPath: '/faq'
       preLoaderRoute: typeof FaqRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/office': {
+      id: '/office'
+      path: '/office'
+      fullPath: '/office'
+      preLoaderRoute: typeof OfficeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/track': {
@@ -541,6 +561,7 @@ const rootRouteChildren: RootRouteChildren = {
   CitizenRoute: CitizenRouteWithChildren,
   ContactRoute: ContactRoute,
   FaqRoute: FaqRoute,
+  OfficeRoute: OfficeRoute,
   TrackRoute: TrackRoute,
   OfficersAppealsRoute: OfficersAppealsRoute,
   OfficersCentralRoute: OfficersCentralRoute,
