@@ -25,6 +25,7 @@ import { Route as CitizenIndexRouteImport } from './routes/citizen.index'
 import { Route as OfficersAppealsRouteImport } from './routes/officers.appeals'
 import { Route as OfficersCentralRouteImport } from './routes/officers.central'
 import { Route as OfficersStatesRouteImport } from './routes/officers.states'
+import { Route as CitizenGrievancesIdRouteImport } from './routes/citizen.grievances.$id'
 import { Route as CitizenGrievancesNewRouteImport } from './routes/citizen.grievances.new'
 
 const IndexRoute = IndexRouteImport.update({
@@ -107,6 +108,11 @@ const OfficersStatesRoute = OfficersStatesRouteImport.update({
   path: '/officers/states',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CitizenGrievancesIdRoute = CitizenGrievancesIdRouteImport.update({
+  id: '/grievances/$id',
+  path: '/grievances/$id',
+  getParentRoute: () => CitizenRoute,
+} as any)
 const CitizenGrievancesNewRoute = CitizenGrievancesNewRouteImport.update({
   id: '/grievances/new',
   path: '/grievances/new',
@@ -130,6 +136,7 @@ export interface FileRoutesByFullPath {
   '/officers/central': typeof OfficersCentralRoute
   '/officers/states': typeof OfficersStatesRoute
   '/citizen/': typeof CitizenIndexRoute
+  '/citizen/grievances/$id': typeof CitizenGrievancesIdRoute
   '/citizen/grievances/new': typeof CitizenGrievancesNewRoute
 }
 export interface FileRoutesByTo {
@@ -148,6 +155,7 @@ export interface FileRoutesByTo {
   '/officers/central': typeof OfficersCentralRoute
   '/officers/states': typeof OfficersStatesRoute
   '/citizen': typeof CitizenIndexRoute
+  '/citizen/grievances/$id': typeof CitizenGrievancesIdRoute
   '/citizen/grievances/new': typeof CitizenGrievancesNewRoute
 }
 export interface FileRoutesById {
@@ -168,6 +176,7 @@ export interface FileRoutesById {
   '/officers/central': typeof OfficersCentralRoute
   '/officers/states': typeof OfficersStatesRoute
   '/citizen/': typeof CitizenIndexRoute
+  '/citizen/grievances/$id': typeof CitizenGrievancesIdRoute
   '/citizen/grievances/new': typeof CitizenGrievancesNewRoute
 }
 export interface FileRouteTypes {
@@ -189,6 +198,7 @@ export interface FileRouteTypes {
     | '/officers/central'
     | '/officers/states'
     | '/citizen/'
+    | '/citizen/grievances/$id'
     | '/citizen/grievances/new'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -207,6 +217,7 @@ export interface FileRouteTypes {
     | '/officers/central'
     | '/officers/states'
     | '/citizen'
+    | '/citizen/grievances/$id'
     | '/citizen/grievances/new'
   id:
     | '__root__'
@@ -226,6 +237,7 @@ export interface FileRouteTypes {
     | '/officers/central'
     | '/officers/states'
     | '/citizen/'
+    | '/citizen/grievances/$id'
     | '/citizen/grievances/new'
   fileRoutesById: FileRoutesById
 }
@@ -357,6 +369,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OfficersStatesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/citizen/grievances/$id': {
+      id: '/citizen/grievances/$id'
+      path: '/grievances/$id'
+      fullPath: '/citizen/grievances/$id'
+      preLoaderRoute: typeof CitizenGrievancesIdRouteImport
+      parentRoute: typeof CitizenRoute
+    }
     '/citizen/grievances/new': {
       id: '/citizen/grievances/new'
       path: '/grievances/new'
@@ -385,11 +404,13 @@ const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
 
 interface CitizenRouteChildren {
   CitizenIndexRoute: typeof CitizenIndexRoute
+  CitizenGrievancesIdRoute: typeof CitizenGrievancesIdRoute
   CitizenGrievancesNewRoute: typeof CitizenGrievancesNewRoute
 }
 
 const CitizenRouteChildren: CitizenRouteChildren = {
   CitizenIndexRoute: CitizenIndexRoute,
+  CitizenGrievancesIdRoute: CitizenGrievancesIdRoute,
   CitizenGrievancesNewRoute: CitizenGrievancesNewRoute,
 }
 
