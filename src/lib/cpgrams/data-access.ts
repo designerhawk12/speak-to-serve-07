@@ -1,6 +1,10 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
-import { resolutionConfirmDebug, resolutionConfirmError, safeResolutionErrorContext } from "./resolution-debug";
+import {
+  resolutionConfirmDebug,
+  resolutionConfirmError,
+  safeResolutionErrorContext,
+} from "./resolution-debug";
 
 type Tables = Database["public"]["Tables"];
 export type TableRow<Name extends keyof Tables> = Tables[Name]["Row"];
@@ -19,6 +23,8 @@ export type AppealRow = TableRow<"appeals">;
 export type AppealEventRow = TableRow<"appeal_events">;
 export type NotificationRow = TableRow<"notifications">;
 export type IssueClusterRow = TableRow<"issue_clusters">;
+export type IssueClusterMemberRow = TableRow<"issue_cluster_members">;
+export type AiRunRow = TableRow<"ai_runs">;
 export type OrganizationRow = TableRow<"organizations">;
 export type GrievanceCategoryRow = TableRow<"grievance_categories">;
 
@@ -64,6 +70,27 @@ export interface AppealWorkspace {
   grievanceWorkspace: GrievanceWorkspace;
 }
 
+export interface IssueClusterCollection {
+  clusters: IssueClusterRow[];
+  organizations: Record<string, OrganizationRow>;
+  categories: Record<string, GrievanceCategoryRow>;
+  membersByCluster: Record<string, IssueClusterMemberRow[]>;
+  grievancesById: Record<string, GrievanceRow>;
+  appealsByGrievance: Record<string, AppealRow[]>;
+}
+
+export interface OfficeAnalyticsData {
+  collection: GrievanceCollection;
+  events: CaseEventRow[];
+}
+
+/** Read-only platform reference and audit surfaces. RLS determines audit visibility. */
+export interface PlatformAdminOverview {
+  organizations: OrganizationRow[];
+  categories: GrievanceCategoryRow[];
+  aiRuns: AiRunRow[];
+}
+
 function throwIfError(error: { message: string } | null, context: string): void {
   if (error) throw new Error(`${context}: ${error.message}`);
 }
@@ -80,7 +107,9 @@ function indexBy<T>(rows: T[], key: (row: T) => string): Record<string, T> {
   return Object.fromEntries(rows.map((row) => [key(row), row]));
 }
 
-async function getOrganizations(ids: Array<string | null>): Promise<Record<string, OrganizationRow>> {
+async function getOrganizations(
+  ids: Array<string | null>,
+): Promise<Record<string, OrganizationRow>> {
   const uniqueIds = [...new Set(ids.filter((id): id is string => Boolean(id)))];
   if (uniqueIds.length === 0) return {};
   const { data, error } = await supabase.from("organizations").select("*").in("id", uniqueIds);
@@ -88,10 +117,15 @@ async function getOrganizations(ids: Array<string | null>): Promise<Record<strin
   return indexBy(data ?? [], (row) => row.id);
 }
 
-async function getCategories(ids: Array<string | null>): Promise<Record<string, GrievanceCategoryRow>> {
+async function getCategories(
+  ids: Array<string | null>,
+): Promise<Record<string, GrievanceCategoryRow>> {
   const uniqueIds = [...new Set(ids.filter((id): id is string => Boolean(id)))];
   if (uniqueIds.length === 0) return {};
-  const { data, error } = await supabase.from("grievance_categories").select("*").in("id", uniqueIds);
+  const { data, error } = await supabase
+    .from("grievance_categories")
+    .select("*")
+    .in("id", uniqueIds);
   throwIfError(error, "Unable to load grievance categories");
   return indexBy(data ?? [], (row) => row.id);
 }
@@ -102,17 +136,37 @@ async function enrichGrievances(grievances: GrievanceRow[]): Promise<GrievanceCo
   const categoriesPromise = getCategories(grievances.map((row) => row.category_id));
 
   if (grievanceIds.length === 0) {
-    const [organizations, categories] = await Promise.all([organizationsPromise, categoriesPromise]);
-    return { grievances, organizations, categories, appealsByGrievance: {}, requestsByGrievance: {}, requestItemsByRequest: {}, prioritiesByGrievance: {} };
+    const [organizations, categories] = await Promise.all([
+      organizationsPromise,
+      categoriesPromise,
+    ]);
+    return {
+      grievances,
+      organizations,
+      categories,
+      appealsByGrievance: {},
+      requestsByGrievance: {},
+      requestItemsByRequest: {},
+      prioritiesByGrievance: {},
+    };
   }
 
-  const [organizations, categories, appealsResult, requestsResult, prioritiesResult] = await Promise.all([
-    organizationsPromise,
-    categoriesPromise,
-    supabase.from("appeals").select("*").in("grievance_id", grievanceIds).order("filed_at", { ascending: false }),
-    supabase.from("document_requests").select("*").in("grievance_id", grievanceIds).order("created_at", { ascending: false }),
-    supabase.from("grievance_priorities").select("*").in("grievance_id", grievanceIds),
-  ]);
+  const [organizations, categories, appealsResult, requestsResult, prioritiesResult] =
+    await Promise.all([
+      organizationsPromise,
+      categoriesPromise,
+      supabase
+        .from("appeals")
+        .select("*")
+        .in("grievance_id", grievanceIds)
+        .order("filed_at", { ascending: false }),
+      supabase
+        .from("document_requests")
+        .select("*")
+        .in("grievance_id", grievanceIds)
+        .order("created_at", { ascending: false }),
+      supabase.from("grievance_priorities").select("*").in("grievance_id", grievanceIds),
+    ]);
   throwIfError(appealsResult.error, "Unable to load grievance appeals");
   throwIfError(requestsResult.error, "Unable to load document requests");
   throwIfError(prioritiesResult.error, "Unable to load grievance priorities");
@@ -140,7 +194,11 @@ async function enrichGrievances(grievances: GrievanceRow[]): Promise<GrievanceCo
 }
 
 export async function getProfile(userId: string): Promise<ProfileRow | null> {
-  const { data, error } = await supabase.from("profiles").select("*").eq("id", userId).maybeSingle();
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("id", userId)
+    .maybeSingle();
   throwIfError(error, "Unable to load profile");
   return data;
 }
@@ -175,9 +233,10 @@ export interface SubmitNewGrievanceInput {
  */
 export async function submitNewGrievance(input: SubmitNewGrievanceInput): Promise<GrievanceRow> {
   const submittedAt = new Date();
-  const slaDueAt = input.categorySlaDays == null
-    ? null
-    : new Date(submittedAt.getTime() + input.categorySlaDays * 86_400_000).toISOString();
+  const slaDueAt =
+    input.categorySlaDays == null
+      ? null
+      : new Date(submittedAt.getTime() + input.categorySlaDays * 86_400_000).toISOString();
   const values: Database["public"]["Tables"]["grievances"]["Insert"] = {
     citizen_id: input.citizenId,
     submission_key: input.submissionKey,
@@ -194,9 +253,14 @@ export async function submitNewGrievance(input: SubmitNewGrievanceInput): Promis
     submitted_at: submittedAt.toISOString(),
     sla_due_at: slaDueAt,
   };
-  const { data, error } = await supabase.from("grievances").insert(values).select("*").maybeSingle();
+  const { data, error } = await supabase
+    .from("grievances")
+    .insert(values)
+    .select("*")
+    .maybeSingle();
   if (!error && data) return data;
-  if (error?.code !== "23505") throw new Error(`Unable to submit grievance: ${error?.message ?? "No grievance row returned"}`);
+  if (error?.code !== "23505")
+    throw new Error(`Unable to submit grievance: ${error?.message ?? "No grievance row returned"}`);
 
   const { data: existing, error: existingError } = await supabase
     .from("grievances")
@@ -205,7 +269,8 @@ export async function submitNewGrievance(input: SubmitNewGrievanceInput): Promis
     .eq("submission_key", input.submissionKey)
     .maybeSingle();
   throwIfError(existingError, "Unable to restore submitted grievance");
-  if (!existing) throw new Error("Your submission may have been received, but it could not be restored safely.");
+  if (!existing)
+    throw new Error("Your submission may have been received, but it could not be restored safely.");
   return existing;
 }
 
@@ -221,26 +286,89 @@ export async function getCitizenGrievances(userId: string): Promise<GrievanceCol
 
 /** RLS defines the signed-in officer's organization/tree/appellate case scope. */
 export async function getAuthorizedGrievances(): Promise<GrievanceCollection> {
-  const { data, error } = await supabase.from("grievances").select("*").order("submitted_at", { ascending: false });
+  const { data, error } = await supabase
+    .from("grievances")
+    .select("*")
+    .order("submitted_at", { ascending: false });
   throwIfError(error, "Unable to load authorized grievances");
   return enrichGrievances(data ?? []);
 }
 
-export async function getGrievanceWorkspace(grievanceId: string): Promise<GrievanceWorkspace | null> {
-  const grievanceResult = await supabase.from("grievances").select("*").eq("id", grievanceId).maybeSingle();
+/** Supervisory metrics use the same RLS-authorized case collection as the office queue. */
+export async function getOfficeAnalytics(): Promise<OfficeAnalyticsData> {
+  const collection = await getAuthorizedGrievances();
+  const grievanceIds = collection.grievances.map((grievance) => grievance.id);
+  if (grievanceIds.length === 0) return { collection, events: [] };
+
+  const { data, error } = await supabase
+    .from("case_events")
+    .select("*")
+    .in("grievance_id", grievanceIds)
+    .order("created_at", { ascending: true });
+  throwIfError(error, "Unable to load authorized case events for analytics");
+  return { collection, events: data ?? [] };
+}
+
+export async function getGrievanceWorkspace(
+  grievanceId: string,
+): Promise<GrievanceWorkspace | null> {
+  const grievanceResult = await supabase
+    .from("grievances")
+    .select("*")
+    .eq("id", grievanceId)
+    .maybeSingle();
   throwIfError(grievanceResult.error, "Unable to load grievance");
   if (!grievanceResult.data) return null;
 
-  const [organizations, categories, events, documents, requests, messages, resolutions, feedback, appeals, priority] = await Promise.all([
+  const [
+    organizations,
+    categories,
+    events,
+    documents,
+    requests,
+    messages,
+    resolutions,
+    feedback,
+    appeals,
+    priority,
+  ] = await Promise.all([
     getOrganizations([grievanceResult.data.organization_id]),
     getCategories([grievanceResult.data.category_id]),
-    supabase.from("case_events").select("*").eq("grievance_id", grievanceId).order("created_at", { ascending: true }),
-    supabase.from("documents").select("*").eq("grievance_id", grievanceId).order("created_at", { ascending: false }),
-    supabase.from("document_requests").select("*").eq("grievance_id", grievanceId).order("created_at", { ascending: false }),
-    supabase.from("messages").select("*").eq("grievance_id", grievanceId).order("created_at", { ascending: true }),
-    supabase.from("resolutions").select("*").eq("grievance_id", grievanceId).order("created_at", { ascending: false }),
-    supabase.from("feedback").select("*").eq("grievance_id", grievanceId).order("created_at", { ascending: false }),
-    supabase.from("appeals").select("*").eq("grievance_id", grievanceId).order("filed_at", { ascending: false }),
+    supabase
+      .from("case_events")
+      .select("*")
+      .eq("grievance_id", grievanceId)
+      .order("created_at", { ascending: true }),
+    supabase
+      .from("documents")
+      .select("*")
+      .eq("grievance_id", grievanceId)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("document_requests")
+      .select("*")
+      .eq("grievance_id", grievanceId)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("messages")
+      .select("*")
+      .eq("grievance_id", grievanceId)
+      .order("created_at", { ascending: true }),
+    supabase
+      .from("resolutions")
+      .select("*")
+      .eq("grievance_id", grievanceId)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("feedback")
+      .select("*")
+      .eq("grievance_id", grievanceId)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("appeals")
+      .select("*")
+      .eq("grievance_id", grievanceId)
+      .order("filed_at", { ascending: false }),
     supabase.from("grievance_priorities").select("*").eq("grievance_id", grievanceId).maybeSingle(),
   ]);
   throwIfError(events.error, "Unable to load case events");
@@ -266,8 +394,12 @@ export async function getGrievanceWorkspace(grievanceId: string): Promise<Grieva
 
   return {
     grievance: grievanceResult.data,
-    organization: grievanceResult.data.organization_id ? organizations[grievanceResult.data.organization_id] ?? null : null,
-    category: grievanceResult.data.category_id ? categories[grievanceResult.data.category_id] ?? null : null,
+    organization: grievanceResult.data.organization_id
+      ? (organizations[grievanceResult.data.organization_id] ?? null)
+      : null,
+    category: grievanceResult.data.category_id
+      ? (categories[grievanceResult.data.category_id] ?? null)
+      : null,
     events: events.data ?? [],
     documents: documents.data ?? [],
     documentRequests: requests.data ?? [],
@@ -286,7 +418,8 @@ export async function markGrievanceOpened(grievanceId: string): Promise<string> 
     p_grievance_id: grievanceId,
   });
   throwIfError(error, "Unable to record that the case was opened");
-  if (!data) throw new Error("Unable to record that the case was opened: no timestamp was returned.");
+  if (!data)
+    throw new Error("Unable to record that the case was opened: no timestamp was returned.");
   return data;
 }
 
@@ -302,9 +435,15 @@ export interface CitizenDocumentUploadInput {
  * its metadata in the RLS-protected documents table. No service-role access or
  * Storage upsert is used.
  */
-export async function uploadCitizenDocument({ grievanceId, userId, file, requestItemId }: CitizenDocumentUploadInput): Promise<DocumentRow> {
+export async function uploadCitizenDocument({
+  grievanceId,
+  userId,
+  file,
+  requestItemId,
+}: CitizenDocumentUploadInput): Promise<DocumentRow> {
   if (file.size === 0) throw new Error("Choose a non-empty file to upload.");
-  if (file.size > 6 * 1024 * 1024) throw new Error("Files larger than 6 MB are not supported in this upload flow.");
+  if (file.size > 6 * 1024 * 1024)
+    throw new Error("Files larger than 6 MB are not supported in this upload flow.");
 
   const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-120) || "document";
   const storagePath = `${userId}/${grievanceId}/${crypto.randomUUID()}-${safeName}`;
@@ -332,7 +471,9 @@ export async function uploadCitizenDocument({ grievanceId, userId, file, request
 
   if (documentError || !document) {
     await supabase.storage.from("grievance-documents").remove([storageData.path]);
-    throw new Error(`Unable to record uploaded document: ${documentError?.message ?? "No document row returned"}`);
+    throw new Error(
+      `Unable to record uploaded document: ${documentError?.message ?? "No document row returned"}`,
+    );
   }
 
   if (requestItemId) {
@@ -347,7 +488,9 @@ export async function uploadCitizenDocument({ grievanceId, userId, file, request
         supabase.from("documents").delete().eq("id", document.id),
         supabase.storage.from("grievance-documents").remove([storageData.path]),
       ]);
-      throw new Error(`Unable to attach document to the request: ${itemError?.message ?? "The request item is no longer available."}`);
+      throw new Error(
+        `Unable to attach document to the request: ${itemError?.message ?? "The request item is no longer available."}`,
+      );
     }
 
     const { data: item, error: requestItemError } = await supabase
@@ -356,13 +499,16 @@ export async function uploadCitizenDocument({ grievanceId, userId, file, request
       .eq("id", requestItemId)
       .single();
     throwIfError(requestItemError, "Unable to check document request progress");
-    if (!item) throw new Error("Unable to check document request progress: request item was not returned.");
+    if (!item)
+      throw new Error("Unable to check document request progress: request item was not returned.");
     const { data: requestItems, error: requestItemsError } = await supabase
       .from("document_request_items")
       .select("is_required, document_id")
       .eq("request_id", item.request_id);
     throwIfError(requestItemsError, "Unable to check required documents");
-    if ((requestItems ?? []).filter((entry) => entry.is_required).every((entry) => entry.document_id)) {
+    if (
+      (requestItems ?? []).filter((entry) => entry.is_required).every((entry) => entry.document_id)
+    ) {
       const { data: completedRequest, error: requestError } = await supabase
         .from("document_requests")
         .update({ fulfilled_at: new Date().toISOString() })
@@ -370,7 +516,10 @@ export async function uploadCitizenDocument({ grievanceId, userId, file, request
         .select("id")
         .maybeSingle();
       throwIfError(requestError, "Unable to mark document request complete");
-      if (!completedRequest) throw new Error("Unable to mark document request complete: request is no longer available.");
+      if (!completedRequest)
+        throw new Error(
+          "Unable to mark document request complete: request is no longer available.",
+        );
     }
   }
 
@@ -379,35 +528,65 @@ export async function uploadCitizenDocument({ grievanceId, userId, file, request
     actor_id: userId,
     actor_type: "citizen",
     event_type: "DOCUMENT_UPLOADED",
-    title: requestItemId ? "Citizen uploaded a requested document" : "Citizen uploaded supporting evidence",
+    title: requestItemId
+      ? "Citizen uploaded a requested document"
+      : "Citizen uploaded supporting evidence",
     description: file.name,
     citizen_visible: true,
   });
-  if (eventError) throw new Error(`Document uploaded, but the case history could not be updated: ${eventError.message}`);
+  if (eventError)
+    throw new Error(
+      `Document uploaded, but the case history could not be updated: ${eventError.message}`,
+    );
 
   return document;
 }
 
-export interface OfficerChecklistItem { label: string; description: string; isRequired: boolean; }
+export interface OfficerChecklistItem {
+  label: string;
+  description: string;
+  isRequired: boolean;
+}
 
-export async function requestOfficerDocuments(input: { grievanceId: string; instructions: string; dueAt: string | null; items: OfficerChecklistItem[] }): Promise<string> {
+export async function requestOfficerDocuments(input: {
+  grievanceId: string;
+  instructions: string;
+  dueAt: string | null;
+  items: OfficerChecklistItem[];
+}): Promise<string> {
   const { data, error } = await supabase.rpc("officer_request_documents", {
     p_grievance_id: input.grievanceId,
     p_instructions: input.instructions,
     p_due_at: input.dueAt,
-    p_items: input.items.map((item) => ({ label: item.label, description: item.description, is_required: item.isRequired })),
+    p_items: input.items.map((item) => ({
+      label: item.label,
+      description: item.description,
+      is_required: item.isRequired,
+    })),
   });
   throwIfError(error, "Unable to request documents");
   if (!data) throw new Error("Unable to request documents: request ID was not returned.");
   return data;
 }
 
-export async function requestOfficerClarification(grievanceId: string, instructions: string): Promise<void> {
-  const { error } = await supabase.rpc("officer_request_clarification", { p_grievance_id: grievanceId, p_instructions: instructions });
+export async function requestOfficerClarification(
+  grievanceId: string,
+  instructions: string,
+): Promise<void> {
+  const { error } = await supabase.rpc("officer_request_clarification", {
+    p_grievance_id: grievanceId,
+    p_instructions: instructions,
+  });
   throwIfError(error, "Unable to request clarification");
 }
 
-export async function addOfficerInterimUpdate(input: { grievanceId: string; actionCompleted: string; currentBlocker: string; expectedNextStep: string; expectedDate: string | null }): Promise<string> {
+export async function addOfficerInterimUpdate(input: {
+  grievanceId: string;
+  actionCompleted: string;
+  currentBlocker: string;
+  expectedNextStep: string;
+  expectedDate: string | null;
+}): Promise<string> {
   const { data, error } = await supabase.rpc("officer_add_interim_update", {
     p_grievance_id: input.grievanceId,
     p_action_completed: input.actionCompleted,
@@ -420,7 +599,11 @@ export async function addOfficerInterimUpdate(input: { grievanceId: string; acti
   return data;
 }
 
-export async function transferOfficerGrievance(input: { grievanceId: string; organizationId: string; reason: string }): Promise<void> {
+export async function transferOfficerGrievance(input: {
+  grievanceId: string;
+  organizationId: string;
+  reason: string;
+}): Promise<void> {
   const { error } = await supabase.rpc("officer_transfer_grievance", {
     p_grievance_id: input.grievanceId,
     p_organization_id: input.organizationId,
@@ -429,7 +612,15 @@ export async function transferOfficerGrievance(input: { grievanceId: string; org
   throwIfError(error, "Unable to transfer grievance");
 }
 
-export async function submitOfficerResolution(input: { grievanceId: string; actionTaken: string; outcomeAchieved: string; citizenNextStep: string; narrative: string; partialReason: string; evidenceReference: string }): Promise<string> {
+export async function submitOfficerResolution(input: {
+  grievanceId: string;
+  actionTaken: string;
+  outcomeAchieved: string;
+  citizenNextStep: string;
+  narrative: string;
+  partialReason: string;
+  evidenceReference: string;
+}): Promise<string> {
   const { data, error } = await supabase.rpc("officer_submit_resolution", {
     p_grievance_id: input.grievanceId,
     p_action_taken: input.actionTaken,
@@ -445,39 +636,89 @@ export async function submitOfficerResolution(input: { grievanceId: string; acti
 }
 
 /** Officer evidence uses a new private object path and remains subject to Storage and table RLS. */
-export async function uploadOfficerEvidence(input: { grievanceId: string; userId: string; file: File; citizenVisible: boolean }): Promise<DocumentRow> {
+export async function uploadOfficerEvidence(input: {
+  grievanceId: string;
+  userId: string;
+  file: File;
+  citizenVisible: boolean;
+}): Promise<DocumentRow> {
   if (input.file.size === 0) throw new Error("Choose a non-empty file to upload.");
-  if (input.file.size > 6 * 1024 * 1024) throw new Error("Files larger than 6 MB are not supported in this upload flow.");
+  if (input.file.size > 6 * 1024 * 1024)
+    throw new Error("Files larger than 6 MB are not supported in this upload flow.");
   const safeName = input.file.name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-120) || "evidence";
   const storagePath = `${input.userId}/${input.grievanceId}/${crypto.randomUUID()}-${safeName}`;
-  const { data: uploaded, error: uploadError } = await supabase.storage.from("grievance-documents").upload(storagePath, input.file, { upsert: false, ...(input.file.type ? { contentType: input.file.type } : {}) });
+  const { data: uploaded, error: uploadError } = await supabase.storage
+    .from("grievance-documents")
+    .upload(storagePath, input.file, {
+      upsert: false,
+      ...(input.file.type ? { contentType: input.file.type } : {}),
+    });
   throwIfError(uploadError, "Unable to upload evidence");
   if (!uploaded) throw new Error("Unable to upload evidence: Storage did not return a path.");
-  const { data: document, error: documentError } = await supabase.from("documents").insert({
-    grievance_id: input.grievanceId, uploaded_by: input.userId, storage_path: uploaded.path, file_name: input.file.name,
-    mime_type: input.file.type || null, size_bytes: input.file.size, doc_kind: "government_evidence", citizen_visible: input.citizenVisible,
-  }).select("*").single();
+  const { data: document, error: documentError } = await supabase
+    .from("documents")
+    .insert({
+      grievance_id: input.grievanceId,
+      uploaded_by: input.userId,
+      storage_path: uploaded.path,
+      file_name: input.file.name,
+      mime_type: input.file.type || null,
+      size_bytes: input.file.size,
+      doc_kind: "government_evidence",
+      citizen_visible: input.citizenVisible,
+    })
+    .select("*")
+    .single();
   if (documentError || !document) {
     await supabase.storage.from("grievance-documents").remove([uploaded.path]);
-    throw new Error(`Unable to record evidence: ${documentError?.message ?? "No document row returned"}`);
+    throw new Error(
+      `Unable to record evidence: ${documentError?.message ?? "No document row returned"}`,
+    );
   }
   const { error: eventError } = await supabase.from("case_events").insert({
-    grievance_id: input.grievanceId, actor_id: input.userId, actor_type: "officer", event_type: "EVIDENCE_ATTACHED",
-    title: "Government evidence attached", description: input.file.name, citizen_visible: input.citizenVisible,
+    grievance_id: input.grievanceId,
+    actor_id: input.userId,
+    actor_type: "officer",
+    event_type: "EVIDENCE_ATTACHED",
+    title: "Government evidence attached",
+    description: input.file.name,
+    citizen_visible: input.citizenVisible,
   });
-  if (eventError) throw new Error(`Evidence uploaded, but the case history could not be updated: ${eventError.message}`);
+  if (eventError)
+    throw new Error(
+      `Evidence uploaded, but the case history could not be updated: ${eventError.message}`,
+    );
   return document;
 }
 
-export type CitizenResolutionConfirmation = "CONFIRMED_RESOLVED" | "PARTIALLY_RESOLVED" | "NOT_RESOLVED";
+export type CitizenResolutionConfirmation =
+  "CONFIRMED_RESOLVED" | "PARTIALLY_RESOLVED" | "NOT_RESOLVED";
 
-export async function confirmCitizenResolution(input: { grievanceId: string; confirmation: CitizenResolutionConfirmation; whatWasFixed: string; whatRemainsUnresolved: string; requestedCorrection: string; evidenceDocumentId: string | null }): Promise<void> {
+export async function confirmCitizenResolution(input: {
+  grievanceId: string;
+  confirmation: CitizenResolutionConfirmation;
+  whatWasFixed: string;
+  whatRemainsUnresolved: string;
+  requestedCorrection: string;
+  evidenceDocumentId: string | null;
+}): Promise<void> {
   const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
   if (sessionError || !sessionData.session?.user) {
-    resolutionConfirmError("08", "authenticated session check failed", { grievanceId: input.grievanceId, confirmation: input.confirmation, ...safeResolutionErrorContext(sessionError) });
-    throw new Error("Unable to record your resolution confirmation: your session is unavailable. Sign in and try again.");
+    resolutionConfirmError("08", "authenticated session check failed", {
+      grievanceId: input.grievanceId,
+      confirmation: input.confirmation,
+      ...safeResolutionErrorContext(sessionError),
+    });
+    throw new Error(
+      "Unable to record your resolution confirmation: your session is unavailable. Sign in and try again.",
+    );
   }
-  resolutionConfirmDebug("08", "RPC starting", { grievanceId: input.grievanceId, confirmation: input.confirmation, authUserId: sessionData.session.user.id, hasEvidence: Boolean(input.evidenceDocumentId) });
+  resolutionConfirmDebug("08", "RPC starting", {
+    grievanceId: input.grievanceId,
+    confirmation: input.confirmation,
+    authUserId: sessionData.session.user.id,
+    hasEvidence: Boolean(input.evidenceDocumentId),
+  });
   const { data, error } = await supabase.rpc("citizen_confirm_resolution", {
     p_grievance_id: input.grievanceId,
     p_confirmation: input.confirmation,
@@ -487,13 +728,25 @@ export async function confirmCitizenResolution(input: { grievanceId: string; con
     p_evidence_document_id: input.evidenceDocumentId,
   });
   if (error) {
-    resolutionConfirmError("09", "RPC returned an error", { grievanceId: input.grievanceId, confirmation: input.confirmation, ...safeResolutionErrorContext(error) });
+    resolutionConfirmError("09", "RPC returned an error", {
+      grievanceId: input.grievanceId,
+      confirmation: input.confirmation,
+      ...safeResolutionErrorContext(error),
+    });
     throw new Error(`Unable to record your resolution confirmation: ${error.message}`);
   }
-  resolutionConfirmDebug("09", "RPC returned successfully", { grievanceId: input.grievanceId, confirmation: input.confirmation, responseReceived: data === null || data === undefined });
+  resolutionConfirmDebug("09", "RPC returned successfully", {
+    grievanceId: input.grievanceId,
+    confirmation: input.confirmation,
+    responseReceived: data === null || data === undefined,
+  });
 }
 
-export async function createCitizenAppeal(input: { grievanceId: string; grounds: string; requestedRelief: string }): Promise<string> {
+export async function createCitizenAppeal(input: {
+  grievanceId: string;
+  grounds: string;
+  requestedRelief: string;
+}): Promise<string> {
   const { data, error } = await supabase.rpc("citizen_create_appeal", {
     p_grievance_id: input.grievanceId,
     p_grounds: input.grounds,
@@ -504,7 +757,11 @@ export async function createCitizenAppeal(input: { grievanceId: string; grounds:
   return data;
 }
 
-export async function recordAppellateDecision(input: { appealId: string; decisionSummary: string; decisionReasons: string }): Promise<void> {
+export async function recordAppellateDecision(input: {
+  appealId: string;
+  decisionSummary: string;
+  decisionReasons: string;
+}): Promise<void> {
   const { error } = await supabase.rpc("appellate_record_appeal_decision", {
     p_appeal_id: input.appealId,
     p_decision_summary: input.decisionSummary,
@@ -513,7 +770,10 @@ export async function recordAppellateDecision(input: { appealId: string; decisio
   throwIfError(error, "Unable to record the appeal decision");
 }
 
-export async function requestAppealOfficeReply(input: { appealId: string; instructions: string }): Promise<string> {
+export async function requestAppealOfficeReply(input: {
+  appealId: string;
+  instructions: string;
+}): Promise<string> {
   const { data, error } = await supabase.rpc("appellate_request_office_reply", {
     p_appeal_id: input.appealId,
     p_instructions: input.instructions,
@@ -540,12 +800,20 @@ export async function replyToAppeal(input: { appealId: string; reply: string }):
  * be blocked as a pop-up.
  */
 export async function createAuthorizedDocumentUrl(documentId: string): Promise<string> {
-  const { data: document, error: documentError } = await supabase.from("documents").select("id, storage_path, file_name").eq("id", documentId).maybeSingle();
+  const { data: document, error: documentError } = await supabase
+    .from("documents")
+    .select("id, storage_path, file_name")
+    .eq("id", documentId)
+    .maybeSingle();
   throwIfError(documentError, "Unable to access document");
-  if (!document) throw new Error("This document is unavailable or you are not authorised to open it.");
-  const { data, error } = await supabase.storage.from("grievance-documents").createSignedUrl(document.storage_path, 60);
+  if (!document)
+    throw new Error("This document is unavailable or you are not authorised to open it.");
+  const { data, error } = await supabase.storage
+    .from("grievance-documents")
+    .createSignedUrl(document.storage_path, 60);
   throwIfError(error, "Unable to create a secure document link");
-  if (!data?.signedUrl) throw new Error("A secure document link could not be created. Please try again.");
+  if (!data?.signedUrl)
+    throw new Error("A secure document link could not be created. Please try again.");
   return data.signedUrl;
 }
 
@@ -561,7 +829,10 @@ export async function getNotifications(userId: string): Promise<NotificationRow[
 
 /** RLS limits appeal rows to the signed-in user's authorized scope. */
 export async function getAuthorizedAppeals(): Promise<AppealCollection> {
-  const { data, error } = await supabase.from("appeals").select("*").order("filed_at", { ascending: false });
+  const { data, error } = await supabase
+    .from("appeals")
+    .select("*")
+    .order("filed_at", { ascending: false });
   throwIfError(error, "Unable to load authorized appeals");
   const appeals = data ?? [];
   if (appeals.length === 0) return { appeals, grievances: {}, organizations: {} };
@@ -583,7 +854,11 @@ export async function getAppealWorkspace(appealId: string): Promise<AppealWorksp
   if (!appealResult.data) return null;
 
   const [appealEvents, grievanceWorkspace] = await Promise.all([
-    supabase.from("appeal_events").select("*").eq("appeal_id", appealId).order("created_at", { ascending: true }),
+    supabase
+      .from("appeal_events")
+      .select("*")
+      .eq("appeal_id", appealId)
+      .order("created_at", { ascending: true }),
     getGrievanceWorkspace(appealResult.data.grievance_id),
   ]);
   throwIfError(appealEvents.error, "Unable to load appeal events");
@@ -592,8 +867,72 @@ export async function getAppealWorkspace(appealId: string): Promise<AppealWorksp
 }
 
 /** The route guard controls capabilities; RLS remains the final data boundary. */
-export async function getIssueClusters(): Promise<IssueClusterRow[]> {
-  const { data, error } = await supabase.from("issue_clusters").select("*").order("case_count", { ascending: false });
+export async function getIssueClusters(): Promise<IssueClusterCollection> {
+  const { data, error } = await supabase
+    .from("issue_clusters")
+    .select("*")
+    .order("case_count", { ascending: false });
   throwIfError(error, "Unable to load issue clusters");
-  return data ?? [];
+  const clusters = data ?? [];
+  if (clusters.length === 0) {
+    return {
+      clusters,
+      organizations: {},
+      categories: {},
+      membersByCluster: {},
+      grievancesById: {},
+      appealsByGrievance: {},
+    };
+  }
+
+  const clusterIds = clusters.map((cluster) => cluster.id);
+  const [organizations, categories, membersResult] = await Promise.all([
+    getOrganizations(clusters.map((cluster) => cluster.organization_id)),
+    getCategories(clusters.map((cluster) => cluster.category_id)),
+    supabase.from("issue_cluster_members").select("*").in("cluster_id", clusterIds),
+  ]);
+  throwIfError(membersResult.error, "Unable to load issue cluster members");
+  const members = membersResult.data ?? [];
+  const grievanceIds = [...new Set(members.map((member) => member.grievance_id))];
+  if (grievanceIds.length === 0) {
+    return {
+      clusters,
+      organizations,
+      categories,
+      membersByCluster: {},
+      grievancesById: {},
+      appealsByGrievance: {},
+    };
+  }
+
+  const [grievancesResult, appealsResult] = await Promise.all([
+    supabase.from("grievances").select("*").in("id", grievanceIds),
+    supabase.from("appeals").select("*").in("grievance_id", grievanceIds),
+  ]);
+  throwIfError(grievancesResult.error, "Unable to load accessible cluster grievances");
+  throwIfError(appealsResult.error, "Unable to load accessible cluster appeals");
+  return {
+    clusters,
+    organizations,
+    categories,
+    membersByCluster: groupBy(members, (member) => member.cluster_id),
+    grievancesById: indexBy(grievancesResult.data ?? [], (grievance) => grievance.id),
+    appealsByGrievance: groupBy(appealsResult.data ?? [], (appeal) => appeal.grievance_id),
+  };
+}
+
+export async function getPlatformAdminOverview(): Promise<PlatformAdminOverview> {
+  const [organizations, categories, aiRuns] = await Promise.all([
+    supabase.from("organizations").select("*").order("name"),
+    supabase.from("grievance_categories").select("*").order("name"),
+    supabase.from("ai_runs").select("*").order("created_at", { ascending: false }).limit(25),
+  ]);
+  throwIfError(organizations.error, "Unable to load organizations");
+  throwIfError(categories.error, "Unable to load categories");
+  throwIfError(aiRuns.error, "Unable to load AI run audit records");
+  return {
+    organizations: organizations.data ?? [],
+    categories: categories.data ?? [],
+    aiRuns: aiRuns.data ?? [],
+  };
 }

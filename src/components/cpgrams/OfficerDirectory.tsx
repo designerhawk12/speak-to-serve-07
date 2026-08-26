@@ -53,7 +53,10 @@ export function OfficerDirectory({ caption }: { caption?: string }) {
         columns={columns}
         rows={rows}
         getRowId={(r) => r.id}
-        caption={caption ?? "Sample directory records. Live data will come from the case database."}
+        caption={
+          caption ??
+          "Prototype/demo directory records only. They are not official government directory data."
+        }
         emptyTitle="No officers matched"
         emptyDescription="Try a different ministry, department or officer name."
       />

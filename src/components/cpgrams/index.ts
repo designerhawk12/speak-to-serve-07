@@ -10,6 +10,8 @@ export { SlaIndicator } from "./SlaIndicator";
 export { GrievanceCard } from "./GrievanceCard";
 export { Timeline, TimelineEvent } from "./Timeline";
 export { ActionRequiredCard } from "./ActionRequiredCard";
+export { CaseJourney } from "./CaseJourney";
+export { CaseNarrativeCard } from "./CaseNarrativeCard";
 export { RequestedOutcomeCard } from "./RequestedOutcomeCard";
 export { DocumentCard } from "./DocumentCard";
 export { PrivateDocumentCard } from "./PrivateDocumentCard";

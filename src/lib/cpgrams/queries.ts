@@ -7,6 +7,8 @@ import {
   getGrievanceWorkspace,
   getIssueClusters,
   getIntakeTaxonomy,
+  getOfficeAnalytics,
+  getPlatformAdminOverview,
   getNotifications,
   getProfile,
   markGrievanceOpened,
@@ -21,6 +23,8 @@ export const cpgramsQueryKeys = {
   authorizedAppeals: ["cpgrams", "authorized-appeals"] as const,
   appeal: (id: string) => ["cpgrams", "appeal", id] as const,
   issueClusters: ["cpgrams", "issue-clusters"] as const,
+  officeAnalytics: ["cpgrams", "office-analytics"] as const,
+  platformAdminOverview: ["cpgrams", "platform-admin-overview"] as const,
   intakeTaxonomy: ["cpgrams", "intake-taxonomy"] as const,
 };
 
@@ -41,11 +45,17 @@ export function useCitizenGrievancesQuery(userId: string | undefined) {
 }
 
 export function useAuthorizedGrievancesQuery() {
-  return useQuery({ queryKey: cpgramsQueryKeys.authorizedGrievances, queryFn: getAuthorizedGrievances });
+  return useQuery({
+    queryKey: cpgramsQueryKeys.authorizedGrievances,
+    queryFn: getAuthorizedGrievances,
+  });
 }
 
 export function useGrievanceWorkspaceQuery(id: string) {
-  return useQuery({ queryKey: cpgramsQueryKeys.grievance(id), queryFn: () => getGrievanceWorkspace(id) });
+  return useQuery({
+    queryKey: cpgramsQueryKeys.grievance(id),
+    queryFn: () => getGrievanceWorkspace(id),
+  });
 }
 
 export function useMarkGrievanceOpenedMutation(id: string) {
@@ -81,8 +91,23 @@ export function useIssueClustersQuery() {
   return useQuery({ queryKey: cpgramsQueryKeys.issueClusters, queryFn: getIssueClusters });
 }
 
+export function useOfficeAnalyticsQuery() {
+  return useQuery({ queryKey: cpgramsQueryKeys.officeAnalytics, queryFn: getOfficeAnalytics });
+}
+
+export function usePlatformAdminOverviewQuery() {
+  return useQuery({
+    queryKey: cpgramsQueryKeys.platformAdminOverview,
+    queryFn: getPlatformAdminOverview,
+  });
+}
+
 export function useIntakeTaxonomyQuery() {
-  return useQuery({ queryKey: cpgramsQueryKeys.intakeTaxonomy, queryFn: getIntakeTaxonomy, staleTime: 5 * 60_000 });
+  return useQuery({
+    queryKey: cpgramsQueryKeys.intakeTaxonomy,
+    queryFn: getIntakeTaxonomy,
+    staleTime: 5 * 60_000,
+  });
 }
 
 export function queryErrorDetail(error: unknown): string {

@@ -1,11 +1,8 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { Mail, Phone, Clock } from "lucide-react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { CircleHelp, LockKeyhole, Search } from "lucide-react";
 import { PageHeader, PublicShell } from "@/components/cpgrams";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 
 export const Route = createFileRoute("/contact")({
   head: () => ({
@@ -13,7 +10,8 @@ export const Route = createFileRoute("/contact")({
       { title: "Contact and helpline — CPGRAMS Resolution Workspace" },
       {
         name: "description",
-        content: "Helpline numbers, email and a message form for help with using the grievance service.",
+        content:
+          "Helpline numbers, email and a message form for help with using the grievance service.",
       },
       { property: "og:title", content: "Contact the grievance helpdesk" },
       {
@@ -32,14 +30,29 @@ function ContactPage() {
         <PageHeader
           eyebrow="Contact"
           title="Get help using this service"
-          description="For help with a specific case, keep your registration number ready. To lodge a new grievance, use the describe-a-problem flow instead."
+          description="For help with a specific case, use secure citizen access. This prototype does not publish official contact details or transmit support messages."
         />
         <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
           <div className="space-y-4">
             {[
-              { icon: Phone, label: "Helpline", value: "1800 000 0000 (toll free)" },
-              { icon: Mail, label: "Email", value: "help@cpgrams.example.gov.in" },
-              { icon: Clock, label: "Hours", value: "Monday to Saturday, 9:00 – 18:00 IST" },
+              {
+                icon: LockKeyhole,
+                label: "Your private case",
+                value:
+                  "Sign in to see your grievance, documents, messages, and current action without entering a registration number.",
+              },
+              {
+                icon: Search,
+                label: "Public fallback",
+                value:
+                  "Use Track Grievance when a registration number is the only available reference.",
+              },
+              {
+                icon: CircleHelp,
+                label: "Service guidance",
+                value:
+                  "Read the FAQ for plain-language explanations of status, resolution confirmation, and appeals.",
+              },
             ].map((c) => (
               <Card key={c.label} className="border-border">
                 <CardContent className="flex items-start gap-3 p-5">
@@ -50,7 +63,7 @@ function ContactPage() {
                     <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
                       {c.label}
                     </p>
-                    <p className="text-sm font-medium">{c.value}</p>
+                    <p className="text-sm leading-relaxed text-muted-foreground">{c.value}</p>
                   </div>
                 </CardContent>
               </Card>
@@ -59,36 +72,25 @@ function ContactPage() {
 
           <Card className="border-border">
             <CardContent className="p-5 md:p-6">
-              <form
-                className="space-y-4"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                }}
-              >
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="c-name">Your name</Label>
-                    <Input id="c-name" autoComplete="name" />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="c-email">Email</Label>
-                    <Input id="c-email" type="email" autoComplete="email" />
-                  </div>
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="c-ref">Registration number (optional)</Label>
-                  <Input id="c-ref" placeholder="e.g. DOPOST/E/2026/0000988" className="font-mono" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="c-msg">How can we help?</Label>
-                  <Textarea id="c-msg" rows={6} placeholder="Describe what you need help with." />
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Message delivery is not connected yet. This form will submit through the case database
-                  once the backend is wired up.
+              <div className="space-y-4">
+                <h2 className="text-sm font-semibold">Support options in this prototype</h2>
+                <p className="text-sm leading-relaxed text-muted-foreground">
+                  A contact-message backend and official helpline directory have not been
+                  configured. To avoid misrepresenting demo information as government contact data,
+                  this page does not show placeholder phone numbers or send a form.
                 </p>
-                <Button type="submit">Send message</Button>
-              </form>
+                <div className="flex flex-wrap gap-2">
+                  <Button asChild>
+                    <Link to="/auth/login">Citizen Login</Link>
+                  </Button>
+                  <Button asChild variant="outline">
+                    <Link to="/track">Track grievance</Link>
+                  </Button>
+                  <Button asChild variant="outline">
+                    <Link to="/faq">Read FAQ</Link>
+                  </Button>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </div>

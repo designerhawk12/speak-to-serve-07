@@ -12,6 +12,7 @@ export interface StatusExplanationCardProps {
   adminStatus: AdminStatus;
   citizenOutcome: CitizenOutcomeStatus;
   nextStep?: string;
+  citizenLaneLabel?: string;
   className?: string;
 }
 
@@ -23,6 +24,7 @@ export function StatusExplanationCard({
   adminStatus,
   citizenOutcome,
   nextStep,
+  citizenLaneLabel = "What you have confirmed",
   className,
 }: StatusExplanationCardProps) {
   const admin = ADMIN_STATUS_META[adminStatus];
@@ -40,7 +42,7 @@ export function StatusExplanationCard({
         </div>
         <div className="space-y-2 md:border-l md:pl-6">
           <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-            What you have confirmed
+            {citizenLaneLabel}
           </p>
           <StatusChip label={citizen.label} tone={citizen.tone} size="lg" />
           <p className="text-sm leading-relaxed text-muted-foreground">{citizen.meaning}</p>

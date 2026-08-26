@@ -68,9 +68,9 @@ function HomePage() {
               Tell us what went wrong. In your own words.
             </h1>
             <p className="max-w-xl text-base leading-relaxed text-muted-foreground md:text-lg">
-              You should not have to learn how the government is organised to ask it for help. Describe
-              your problem, and we will find the office responsible, keep you informed, and separate
-              &ldquo;the file was closed&rdquo; from &ldquo;the problem was solved&rdquo;.
+              You should not have to learn how the government is organised to ask it for help.
+              Describe your problem, and we will find the office responsible, keep you informed, and
+              separate &ldquo;the file was closed&rdquo; from &ldquo;the problem was solved&rdquo;.
             </p>
             <div className="flex flex-col gap-3 sm:flex-row">
               <Button asChild size="lg">
@@ -84,7 +84,10 @@ function HomePage() {
               </Button>
             </div>
             <div className="flex flex-wrap gap-x-6 gap-y-2 pt-2 text-sm">
-              <Link to="/auth/login" className="focus-ring inline-flex items-center gap-1.5 rounded-md font-semibold text-primary hover:underline">
+              <Link
+                to="/auth/login"
+                className="focus-ring inline-flex items-center gap-1.5 rounded-md font-semibold text-primary hover:underline"
+              >
                 <UserRound className="size-4" aria-hidden />
                 Citizen Login
               </Link>
@@ -95,7 +98,10 @@ function HomePage() {
                 <ShieldCheck className="size-4" aria-hidden />
                 Government Officer Login
               </Link>
-              <Link to="/appeal-status" className="focus-ring inline-flex items-center gap-1.5 rounded-md font-semibold text-primary hover:underline">
+              <Link
+                to="/appeal-status"
+                className="focus-ring inline-flex items-center gap-1.5 rounded-md font-semibold text-primary hover:underline"
+              >
                 <Gavel className="size-4" aria-hidden />
                 Appeal status
               </Link>
@@ -159,35 +165,60 @@ function HomePage() {
       </section>
 
       {/* Public dashboards */}
-      <section className="border-y border-border bg-surface-raised py-14 md:py-20" aria-labelledby="dashboards">
+      <section
+        className="border-y border-border bg-surface-raised py-14 md:py-20"
+        aria-labelledby="dashboards"
+      >
         <div className="page-container space-y-8">
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div className="max-w-2xl space-y-3">
-              <p className="text-xs font-bold tracking-wide text-primary uppercase">Public dashboards</p>
+              <p className="text-xs font-bold tracking-wide text-primary uppercase">
+                Public dashboards
+              </p>
               <h2 id="dashboards" className="text-2xl font-bold md:text-3xl">
                 What the system is doing, in the open
               </h2>
               <p className="text-sm text-muted-foreground">
-                Illustrative figures. Live public dashboards will be published from the case database.
+                Public reporting is deliberately separate from private case records. This prototype
+                does not present illustrative figures as official statistics.
               </p>
             </div>
             <Button asChild variant="outline">
-              <Link to="/office/analytics">
+              <Link to="/dashboard/public">
                 <BarChart3 className="size-4" aria-hidden />
-                Detailed analytics
+                Public reporting status
               </Link>
             </Button>
           </div>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <KpiCard label="Grievances this month" value="1,24,806" helpText="Registered across all offices" />
             <KpiCard
-              label="Citizen-confirmed resolved"
-              value="41%"
-              tone="success"
-              helpText="Confirmed by citizens, not by disposal counts"
+              label="Case performance"
+              value="Private"
+              helpText="No public aggregate feed is published in this prototype"
             />
-            <KpiCard label="Past committed timeline" value="8,912" tone="critical" helpText="Cases beyond their SLA" />
-            <KpiCard label="Appeals pending" value="3,144" tone="warning" helpText="With Appellate Authorities" />
+            <KpiCard
+              label="Citizen outcomes"
+              value="Private"
+              tone="success"
+              helpText="Citizen confirmation remains private to each case"
+            />
+            <KpiCard
+              label="SLA reporting"
+              value="Pending"
+              tone="warning"
+              helpText="Requires an approved aggregate publication contract"
+            />
+            <KpiCard
+              label="Appeal reporting"
+              value="Pending"
+              tone="warning"
+              helpText="Individual appeal files are private"
+            />
+          </div>
+          <div>
+            <Button asChild variant="outline">
+              <Link to="/dashboard/appeals">Appeal reporting status</Link>
+            </Button>
           </div>
         </div>
       </section>
@@ -200,7 +231,8 @@ function HomePage() {
             Nodal officers and Appellate Authorities
           </h2>
           <p className="text-sm text-muted-foreground">
-            Find the officer responsible for grievances in a ministry, a state, or at the appeal stage.
+            Find the officer responsible for grievances in a ministry, a state, or at the appeal
+            stage.
           </p>
         </div>
         <div className="mt-8 grid gap-4 sm:grid-cols-3">
@@ -215,7 +247,10 @@ function HomePage() {
               className="focus-ring group flex items-center justify-between gap-3 rounded-lg border border-border bg-surface-raised p-5 hover:shadow-raised"
             >
               <span className="text-sm font-semibold">{d.label}</span>
-              <ArrowRight className="size-4 shrink-0 text-primary transition-transform group-hover:translate-x-0.5" aria-hidden />
+              <ArrowRight
+                className="size-4 shrink-0 text-primary transition-transform group-hover:translate-x-0.5"
+                aria-hidden
+              />
             </Link>
           ))}
         </div>

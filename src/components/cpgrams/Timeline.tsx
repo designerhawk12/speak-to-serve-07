@@ -18,11 +18,16 @@ export function TimelineEvent({
   event: TimelineEventRecord;
   isLast?: boolean;
 }) {
+  const actorType =
+    event.actorLabel === "You" ? "You" : event.actorLabel === "System" ? "System" : "Government";
   return (
     <li className="relative flex gap-4 pb-6 last:pb-0">
       {!isLast && <span className="absolute top-4 left-[7px] h-full w-px bg-border" aria-hidden />}
       <span
-        className={cn("relative mt-1.5 size-3.5 shrink-0 rounded-full ring-4 ring-background", dotTone[event.tone ?? "neutral"])}
+        className={cn(
+          "relative mt-1.5 size-3.5 shrink-0 rounded-full ring-4 ring-background",
+          dotTone[event.tone ?? "neutral"],
+        )}
         aria-hidden
       />
       <div className="min-w-0 flex-1 space-y-1.5">
@@ -30,9 +35,14 @@ export function TimelineEvent({
           <p className="text-sm font-semibold">{event.title}</p>
           <time className="text-xs text-muted-foreground">{event.occurredAt}</time>
         </div>
-        <p className="text-xs text-muted-foreground">
-          {event.actorLabel} · {ROLE_LABELS[event.actorRole]}
-        </p>
+        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+          <span className="rounded-full border border-border bg-surface-sunken px-2 py-0.5 font-semibold text-foreground">
+            {actorType}
+          </span>
+          <span>
+            {actorType === "Government" ? ROLE_LABELS[event.actorRole] : event.actorLabel}
+          </span>
+        </div>
         {event.description && (
           <p className="text-sm leading-relaxed text-muted-foreground">{event.description}</p>
         )}

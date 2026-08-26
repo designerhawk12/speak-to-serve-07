@@ -8,6 +8,8 @@ interface AppealViewRow {
   id: string;
   reference: string;
   problem: string;
+  requestedOutcome: string;
+  citizenReason: string;
   filedAt: string;
   stage: string;
   tone: "info" | "warning" | "critical";
@@ -19,7 +21,8 @@ export const Route = createFileRoute("/office/appeals/")({
       { title: "Appeals — CPGRAMS Resolution Workspace" },
       {
         name: "description",
-        content: "Appeals awaiting a human decision by an Appellate Authority, with the original grievance intact.",
+        content:
+          "Appeals awaiting a human decision by an Appellate Authority, with the original grievance intact.",
       },
       { property: "og:title", content: "Appeals" },
       { property: "og:description", content: "Appeals queue for Appellate Authorities." },
@@ -34,16 +37,62 @@ function OfficeAppeals() {
   const appeals: AppealViewRow[] = (appealsQuery.data?.appeals ?? []).map((appeal) => ({
     id: appeal.id,
     reference: appeal.reference_number,
-    problem: appealsQuery.data?.grievances[appeal.grievance_id]?.short_title ?? "Authorized grievance",
+    problem:
+      appealsQuery.data?.grievances[appeal.grievance_id]?.short_title ?? "Authorized grievance",
+    requestedOutcome:
+      appealsQuery.data?.grievances[appeal.grievance_id]?.requested_outcome ?? "Not recorded",
+    citizenReason: appeal.grounds,
     filedAt: formatDate(appeal.filed_at),
-    stage: appeal.state === "UNDER_REVIEW" ? "Under review" : appeal.state === "FILED" ? "Filed" : appeal.state === "REJECTED" ? "Not accepted" : "Decided",
-    tone: appeal.state === "REJECTED" ? "critical" : appeal.state === "DECIDED" ? "info" : appeal.state === "FILED" ? "warning" : "info",
+    stage:
+      appeal.state === "UNDER_REVIEW"
+        ? "Under review"
+        : appeal.state === "FILED"
+          ? "Filed"
+          : appeal.state === "REJECTED"
+            ? "Not accepted"
+            : "Decided",
+    tone:
+      appeal.state === "REJECTED"
+        ? "critical"
+        : appeal.state === "DECIDED"
+          ? "info"
+          : appeal.state === "FILED"
+            ? "warning"
+            : "info",
   }));
 
   const columns: DataTableColumn<AppealViewRow>[] = [
-    { id: "ref", header: "Appeal reference", cell: (r) => <span className="font-mono text-xs">{r.reference}</span> },
-    { id: "problem", header: "Problem", cell: (r) => <span className="font-medium">{r.problem}</span> },
-    { id: "stage", header: "Stage", hideBelow: "md", cell: (r) => <StatusChip label={r.stage} tone={r.tone} /> },
+    {
+      id: "ref",
+      header: "Appeal reference",
+      cell: (r) => <span className="font-mono text-xs">{r.reference}</span>,
+    },
+    {
+      id: "problem",
+      header: "Complaint & requested outcome",
+      cell: (r) => (
+        <div>
+          <p className="font-medium">{r.problem}</p>
+          <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+            Requested: {r.requestedOutcome}
+          </p>
+        </div>
+      ),
+    },
+    {
+      id: "reason",
+      header: "Citizen reason",
+      hideBelow: "lg",
+      cell: (r) => (
+        <p className="line-clamp-2 max-w-72 text-xs text-muted-foreground">{r.citizenReason}</p>
+      ),
+    },
+    {
+      id: "stage",
+      header: "Stage",
+      hideBelow: "md",
+      cell: (r) => <StatusChip label={r.stage} tone={r.tone} />,
+    },
     { id: "filed", header: "Filed", hideBelow: "sm", cell: (r) => r.filedAt },
   ];
 
@@ -52,25 +101,46 @@ function OfficeAppeals() {
       <PageHeader
         eyebrow="Appellate lane"
         title="Appeals"
-        description="Every appeal is decided by a person. AI may summarise, but never decides."
+        description="Compare the original complaint, requested outcome, government record, and citizen disagreement before recording a manual decision."
       />
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <KpiCard label="Open appeals" value={appeals.filter((appeal) => !["Decided", "Not accepted"].includes(appeal.stage)).length} />
-        <KpiCard label="Under review" value={appeals.filter((appeal) => appeal.stage === "Under review").length} tone="warning" helpText="Currently before the authority" />
-        <KpiCard label="Decided" value={appeals.filter((appeal) => appeal.stage === "Decided").length} helpText="Decisions in your authorized scope" />
+        <KpiCard
+          label="Open appeals"
+          value={
+            appeals.filter((appeal) => !["Decided", "Not accepted"].includes(appeal.stage)).length
+          }
+        />
+        <KpiCard
+          label="Under review"
+          value={appeals.filter((appeal) => appeal.stage === "Under review").length}
+          tone="warning"
+          helpText="Currently before the authority"
+        />
+        <KpiCard
+          label="Decided"
+          value={appeals.filter((appeal) => appeal.stage === "Decided").length}
+          helpText="Decisions in your authorized scope"
+        />
       </div>
 
-      {appealsQuery.isError ? <ErrorState detail={queryErrorDetail(appealsQuery.error)} onRetry={() => void appealsQuery.refetch()} /> : <DataTable
-        columns={columns}
-        rows={appeals}
-        getRowId={(r) => r.id}
-        onRowClick={(r) => navigate({ to: "/office/appeals/$id", params: { id: r.id } })}
-        caption="Appeals pending before this authority"
-        emptyTitle="No appeals pending"
-        emptyDescription="Authorized appeals will appear here when citizens file them."
-        isLoading={appealsQuery.isPending}
-      />}
+      {appealsQuery.isError ? (
+        <ErrorState
+          detail={queryErrorDetail(appealsQuery.error)}
+          onRetry={() => void appealsQuery.refetch()}
+        />
+      ) : (
+        <DataTable
+          columns={columns}
+          rows={appeals}
+          getRowId={(r) => r.id}
+          onRowClick={(r) => navigate({ to: "/office/appeals/$id", params: { id: r.id } })}
+          caption="RLS-authorized appeal files. Decisions remain manual."
+          emptyTitle="No appeals pending"
+          emptyDescription="Authorized appeals will appear here when citizens file them."
+          isLoading={appealsQuery.isPending}
+        />
+      )}
     </div>
   );
 }

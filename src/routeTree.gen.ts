@@ -26,6 +26,8 @@ import { Route as AuthSignupRouteImport } from './routes/auth.signup'
 import { Route as CitizenIndexRouteImport } from './routes/citizen.index'
 import { Route as CitizenNotificationsRouteImport } from './routes/citizen.notifications'
 import { Route as CitizenProfileRouteImport } from './routes/citizen.profile'
+import { Route as DashboardAppealsRouteImport } from './routes/dashboard.appeals'
+import { Route as DashboardPublicRouteImport } from './routes/dashboard.public'
 import { Route as OfficeIndexRouteImport } from './routes/office.index'
 import { Route as OfficeAnalyticsRouteImport } from './routes/office.analytics'
 import { Route as OfficeSystemicIssuesRouteImport } from './routes/office.systemic-issues'
@@ -128,6 +130,16 @@ const CitizenProfileRoute = CitizenProfileRouteImport.update({
   path: '/profile',
   getParentRoute: () => CitizenRoute,
 } as any)
+const DashboardAppealsRoute = DashboardAppealsRouteImport.update({
+  id: '/dashboard/appeals',
+  path: '/dashboard/appeals',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardPublicRoute = DashboardPublicRouteImport.update({
+  id: '/dashboard/public',
+  path: '/dashboard/public',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OfficeIndexRoute = OfficeIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -228,6 +240,8 @@ export interface FileRoutesByFullPath {
   '/auth/signup': typeof AuthSignupRoute
   '/citizen/notifications': typeof CitizenNotificationsRoute
   '/citizen/profile': typeof CitizenProfileRoute
+  '/dashboard/appeals': typeof DashboardAppealsRoute
+  '/dashboard/public': typeof DashboardPublicRoute
   '/office/analytics': typeof OfficeAnalyticsRoute
   '/office/systemic-issues': typeof OfficeSystemicIssuesRoute
   '/officers/appeals': typeof OfficersAppealsRoute
@@ -261,6 +275,8 @@ export interface FileRoutesByTo {
   '/auth/signup': typeof AuthSignupRoute
   '/citizen/notifications': typeof CitizenNotificationsRoute
   '/citizen/profile': typeof CitizenProfileRoute
+  '/dashboard/appeals': typeof DashboardAppealsRoute
+  '/dashboard/public': typeof DashboardPublicRoute
   '/office/analytics': typeof OfficeAnalyticsRoute
   '/office/systemic-issues': typeof OfficeSystemicIssuesRoute
   '/officers/appeals': typeof OfficersAppealsRoute
@@ -297,6 +313,8 @@ export interface FileRoutesById {
   '/auth/signup': typeof AuthSignupRoute
   '/citizen/notifications': typeof CitizenNotificationsRoute
   '/citizen/profile': typeof CitizenProfileRoute
+  '/dashboard/appeals': typeof DashboardAppealsRoute
+  '/dashboard/public': typeof DashboardPublicRoute
   '/office/analytics': typeof OfficeAnalyticsRoute
   '/office/systemic-issues': typeof OfficeSystemicIssuesRoute
   '/officers/appeals': typeof OfficersAppealsRoute
@@ -334,6 +352,8 @@ export interface FileRouteTypes {
     | '/auth/signup'
     | '/citizen/notifications'
     | '/citizen/profile'
+    | '/dashboard/appeals'
+    | '/dashboard/public'
     | '/office/analytics'
     | '/office/systemic-issues'
     | '/officers/appeals'
@@ -367,6 +387,8 @@ export interface FileRouteTypes {
     | '/auth/signup'
     | '/citizen/notifications'
     | '/citizen/profile'
+    | '/dashboard/appeals'
+    | '/dashboard/public'
     | '/office/analytics'
     | '/office/systemic-issues'
     | '/officers/appeals'
@@ -402,6 +424,8 @@ export interface FileRouteTypes {
     | '/auth/signup'
     | '/citizen/notifications'
     | '/citizen/profile'
+    | '/dashboard/appeals'
+    | '/dashboard/public'
     | '/office/analytics'
     | '/office/systemic-issues'
     | '/officers/appeals'
@@ -432,6 +456,8 @@ export interface RootRouteChildren {
   FaqRoute: typeof FaqRoute
   OfficeRoute: typeof OfficeRouteWithChildren
   TrackRoute: typeof TrackRoute
+  DashboardAppealsRoute: typeof DashboardAppealsRoute
+  DashboardPublicRoute: typeof DashboardPublicRoute
   OfficersAppealsRoute: typeof OfficersAppealsRoute
   OfficersCentralRoute: typeof OfficersCentralRoute
   OfficersStatesRoute: typeof OfficersStatesRoute
@@ -558,6 +584,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/citizen/profile'
       preLoaderRoute: typeof CitizenProfileRouteImport
       parentRoute: typeof CitizenRoute
+    }
+    '/dashboard/appeals': {
+      id: '/dashboard/appeals'
+      path: '/dashboard/appeals'
+      fullPath: '/dashboard/appeals'
+      preLoaderRoute: typeof DashboardAppealsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dashboard/public': {
+      id: '/dashboard/public'
+      path: '/dashboard/public'
+      fullPath: '/dashboard/public'
+      preLoaderRoute: typeof DashboardPublicRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/office/': {
       id: '/office/'
@@ -759,6 +799,8 @@ const rootRouteChildren: RootRouteChildren = {
   FaqRoute: FaqRoute,
   OfficeRoute: OfficeRouteWithChildren,
   TrackRoute: TrackRoute,
+  DashboardAppealsRoute: DashboardAppealsRoute,
+  DashboardPublicRoute: DashboardPublicRoute,
   OfficersAppealsRoute: OfficersAppealsRoute,
   OfficersCentralRoute: OfficersCentralRoute,
   OfficersStatesRoute: OfficersStatesRoute,

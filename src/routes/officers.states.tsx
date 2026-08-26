@@ -30,7 +30,7 @@ function StateOfficersPage() {
           title="States & Union Territories"
           description="State-level nodal officers who receive grievances routed to state administrations."
         />
-        <OfficerDirectory caption="Sample state directory records. Live data will come from the case database." />
+        <OfficerDirectory caption="Prototype/demo state directory records only. They are not official government directory data." />
       </div>
     </PublicShell>
   );

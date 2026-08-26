@@ -17,18 +17,28 @@ const urgencyLabel = {
   urgent: "Urgent",
 } as const;
 
-export function RequestedOutcomeCard({ outcome, originalText, className }: RequestedOutcomeCardProps) {
+export function RequestedOutcomeCard({
+  outcome,
+  originalText,
+  className,
+}: RequestedOutcomeCardProps) {
   return (
     <Card className={cn("border-border", className)}>
       <CardContent className="space-y-4 p-5 md:p-6">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h3 className="text-sm font-semibold">What the citizen wants to happen</h3>
+          <h3 className="text-sm font-semibold">What you asked government to do</h3>
           <div className="flex gap-2">
             {outcome.category && <StatusChip label={outcome.category} tone="neutral" dot={false} />}
             {outcome.urgency && (
               <StatusChip
                 label={urgencyLabel[outcome.urgency]}
-                tone={outcome.urgency === "urgent" ? "critical" : outcome.urgency === "time_sensitive" ? "warning" : "neutral"}
+                tone={
+                  outcome.urgency === "urgent"
+                    ? "critical"
+                    : outcome.urgency === "time_sensitive"
+                      ? "warning"
+                      : "neutral"
+                }
               />
             )}
           </div>
@@ -44,7 +54,9 @@ export function RequestedOutcomeCard({ outcome, originalText, className }: Reque
             <summary className="focus-ring cursor-pointer rounded-md font-medium text-primary">
               Read the original description, unedited
             </summary>
-            <p className="mt-2 leading-relaxed whitespace-pre-line text-muted-foreground">{originalText}</p>
+            <p className="mt-2 leading-relaxed whitespace-pre-line text-muted-foreground">
+              {originalText}
+            </p>
           </details>
         )}
       </CardContent>

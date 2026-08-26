@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useState } from "react";
 import { Search } from "lucide-react";
 import { EmptyState, PageHeader, PublicShell } from "@/components/cpgrams";
 import { Card, CardContent } from "@/components/ui/card";
@@ -26,6 +27,8 @@ export const Route = createFileRoute("/track")({
 });
 
 function TrackPage() {
+  const [registrationNumber, setRegistrationNumber] = useState("");
+  const [lookupMessage, setLookupMessage] = useState("");
   return (
     <PublicShell>
       <div className="page-container max-w-3xl py-10 md:py-14">
@@ -44,11 +47,24 @@ function TrackPage() {
           <CardContent className="p-5 md:p-6">
             <form
               className="flex flex-col gap-3 sm:flex-row sm:items-end"
-              onSubmit={(e) => e.preventDefault()}
+              onSubmit={(e) => {
+                e.preventDefault();
+                setLookupMessage(
+                  registrationNumber.trim()
+                    ? "Public record lookup is not connected in this prototype. Sign in to securely view your own private cases."
+                    : "Enter a registration number, or sign in to see your own cases automatically.",
+                );
+              }}
             >
               <div className="flex-1 space-y-1.5">
                 <Label htmlFor="reg">Registration number</Label>
-                <Input id="reg" placeholder="DOPOST/E/2026/0000988" className="font-mono" />
+                <Input
+                  id="reg"
+                  value={registrationNumber}
+                  onChange={(event) => setRegistrationNumber(event.target.value)}
+                  placeholder="DOPOST/E/2026/0000988"
+                  className="font-mono"
+                />
               </div>
               <Button type="submit">
                 <Search className="size-4" aria-hidden />
@@ -60,8 +76,11 @@ function TrackPage() {
 
         <div className="mt-6">
           <EmptyState
-            title="No case looked up yet"
-            description="Enter a registration number above. Lookup will read from the case database once it is connected."
+            title={lookupMessage ? "Use secure citizen access" : "No case looked up yet"}
+            description={
+              lookupMessage ||
+              "Enter a registration number as a public fallback. Signed-in citizens never need to enter one."
+            }
             icon={Search}
           />
         </div>

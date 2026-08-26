@@ -30,7 +30,7 @@ function AppealOfficersPage() {
           title="Appellate Authorities"
           description="Senior officers who review how a grievance was handled when a citizen is not satisfied with the outcome."
         />
-        <OfficerDirectory caption="Sample appellate records. Live data will come from the case database." />
+        <OfficerDirectory caption="Prototype/demo appellate directory records only. They are not official government directory data." />
       </div>
     </PublicShell>
   );

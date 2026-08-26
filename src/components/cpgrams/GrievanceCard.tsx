@@ -20,7 +20,12 @@ export interface GrievanceCardProps {
   className?: string;
 }
 
-export function GrievanceCard({ grievance: g, variant = "citizen", priority, className }: GrievanceCardProps) {
+export function GrievanceCard({
+  grievance: g,
+  variant = "citizen",
+  priority,
+  className,
+}: GrievanceCardProps) {
   const admin = ADMIN_STATUS_META[g.adminStatus];
   const citizen = CITIZEN_OUTCOME_META[g.citizenOutcome];
 
@@ -69,9 +74,12 @@ export function GrievanceCard({ grievance: g, variant = "citizen", priority, cla
         {variant === "officer" && <PriorityIndicator priority={priority} />}
 
         {g.actionRequired && (
-          <p className="rounded-md border border-warning/35 bg-warning-surface px-3 py-2 text-sm text-warning-foreground">
-            {g.actionRequired}
-          </p>
+          <div className="rounded-md border border-warning/35 bg-warning-surface px-3 py-2">
+            <p className="text-xs font-bold tracking-wide text-warning-foreground uppercase">
+              Action required
+            </p>
+            <p className="mt-1 text-sm text-warning-foreground">{g.actionRequired}</p>
+          </div>
         )}
 
         <Link
