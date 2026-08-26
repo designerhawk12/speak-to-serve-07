@@ -4,6 +4,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { StatusChip } from "./StatusChip";
 import { SlaIndicator } from "./SlaIndicator";
+import { PriorityIndicator } from "./PriorityIndicator";
+import type { GrievancePriorityRow } from "@/lib/cpgrams/data-access";
 import {
   ADMIN_STATUS_META,
   CITIZEN_OUTCOME_META,
@@ -14,10 +16,11 @@ export interface GrievanceCardProps {
   grievance: GrievanceSummary;
   /** Officer view shows office-side metadata rather than citizen guidance. */
   variant?: "citizen" | "officer";
+  priority?: GrievancePriorityRow | null | undefined;
   className?: string;
 }
 
-export function GrievanceCard({ grievance: g, variant = "citizen", className }: GrievanceCardProps) {
+export function GrievanceCard({ grievance: g, variant = "citizen", priority, className }: GrievanceCardProps) {
   const admin = ADMIN_STATUS_META[g.adminStatus];
   const citizen = CITIZEN_OUTCOME_META[g.citizenOutcome];
 
@@ -43,6 +46,16 @@ export function GrievanceCard({ grievance: g, variant = "citizen", className }: 
             <dt className="font-medium">Lodged</dt>
             <dd>{g.lodgedAt}</dd>
           </div>
+          <div className="flex gap-1.5">
+            <dt className="font-medium">Updated</dt>
+            <dd>{g.lastUpdated}</dd>
+          </div>
+          {g.category && (
+            <div className="flex gap-1.5">
+              <dt className="font-medium">Category</dt>
+              <dd>{g.category}</dd>
+            </div>
+          )}
           {g.office && (
             <div className="flex items-center gap-1.5">
               <Building2 className="size-3.5" aria-hidden />
@@ -52,6 +65,8 @@ export function GrievanceCard({ grievance: g, variant = "citizen", className }: 
         </dl>
 
         {g.sla && <SlaIndicator {...g.sla} />}
+
+        {variant === "officer" && <PriorityIndicator priority={priority} />}
 
         {g.actionRequired && (
           <p className="rounded-md border border-warning/35 bg-warning-surface px-3 py-2 text-sm text-warning-foreground">
@@ -64,7 +79,7 @@ export function GrievanceCard({ grievance: g, variant = "citizen", className }: 
           params={{ id: g.id }}
           className="focus-ring inline-flex items-center gap-1.5 rounded-md text-sm font-semibold text-primary hover:underline"
         >
-          {variant === "officer" ? "Open case file" : "View case details"}
+          {variant === "officer" ? "Open case file" : "View case"}
           <ArrowRight className="size-4" aria-hidden />
         </Link>
       </CardContent>

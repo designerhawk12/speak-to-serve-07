@@ -1,39 +1,30 @@
-import { Link } from "@tanstack/react-router";
-import { ShieldAlert } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { useSession, ROLE_LABELS } from "@/lib/cpgrams/session";
-import type { UserRole } from "@/lib/cpgrams/types";
+import { Navigate, useRouterState } from "@tanstack/react-router";
+import { useSession } from "@/lib/cpgrams/session";
+import { canAccessRoute, roleHomePath, routeAccessRule } from "@/lib/cpgrams/auth-routing";
+import { LoadingState } from "@/components/cpgrams/LoadingState";
 
 export interface RoleGuardProps {
-  allow: UserRole[];
-  loginTo?: "/auth/login" | "/auth/officer-login";
   children: React.ReactNode;
 }
 
 /**
- * Scaffolding only — NOT production permissions.
- * Real enforcement will come from Supabase auth + RLS + server functions.
+ * Prevents protected route content from rendering until the profile-backed
+ * role is allowed by the centralized route authorization map.
  */
-export function RoleGuard({ allow, loginTo = "/auth/login", children }: RoleGuardProps) {
-  const { user } = useSession();
+export function RoleGuard({ children }: RoleGuardProps) {
+  const { session, user, isLoading, profileState } = useSession();
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const rule = routeAccessRule(pathname);
 
-  if (user && allow.includes(user.role)) return <>{children}</>;
+  if (isLoading || (session && profileState === "loading")) {
+    return <LoadingState variant="inline" label="Checking your access" />;
+  }
 
-  return (
-    <div className="flex min-h-[60vh] items-center justify-center py-16">
-      <div className="max-w-md space-y-4 text-center">
-        <span className="mx-auto flex size-11 items-center justify-center rounded-full bg-warning-surface text-warning-foreground">
-          <ShieldAlert className="size-5" aria-hidden />
-        </span>
-        <h1 className="text-xl font-bold">Sign in to continue</h1>
-        <p className="text-sm text-muted-foreground">
-          This section is available to {allow.map((r) => ROLE_LABELS[r]).join(", ")}. Access rules are
-          scaffolded here and will be enforced by the backend once authentication is connected.
-        </p>
-        <Button asChild>
-          <Link to={loginTo}>Go to sign in</Link>
-        </Button>
-      </div>
-    </div>
-  );
+  if (!rule) return <>{children}</>;
+  if (user && canAccessRoute(user.role, pathname)) return <>{children}</>;
+
+  if (!session) return <Navigate to={rule.loginTo} replace />;
+  if (user) return <Navigate to={roleHomePath(user.role)} replace />;
+
+  return <LoadingState variant="inline" label="Loading your authorized workspace" />;
 }

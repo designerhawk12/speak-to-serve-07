@@ -38,9 +38,7 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
           <WorkspaceNav />
         </aside>
         <main className="min-w-0 flex-1 px-4 py-6 md:px-8 md:py-8">
-          <RoleGuard allow={["officer", "nodal", "appellate"]} loginTo="/auth/officer-login">
-            {children}
-          </RoleGuard>
+          <RoleGuard>{children}</RoleGuard>
         </main>
       </div>
     </div>

@@ -468,30 +468,42 @@ export type Database = {
           comments: string | null
           confirmation: Database["public"]["Enums"]["citizen_confirmation_state"]
           created_at: string
+          evidence_document_id: string | null
           grievance_id: string
           id: string
+          requested_correction: string | null
           satisfaction_rating: number | null
           updated_at: string
+          what_remains_unresolved: string | null
+          what_was_fixed: string | null
         }
         Insert: {
           citizen_id: string
           comments?: string | null
           confirmation: Database["public"]["Enums"]["citizen_confirmation_state"]
           created_at?: string
+          evidence_document_id?: string | null
           grievance_id: string
           id?: string
+          requested_correction?: string | null
           satisfaction_rating?: number | null
           updated_at?: string
+          what_remains_unresolved?: string | null
+          what_was_fixed?: string | null
         }
         Update: {
           citizen_id?: string
           comments?: string | null
           confirmation?: Database["public"]["Enums"]["citizen_confirmation_state"]
           created_at?: string
+          evidence_document_id?: string | null
           grievance_id?: string
           id?: string
+          requested_correction?: string | null
           satisfaction_rating?: number | null
           updated_at?: string
+          what_remains_unresolved?: string | null
+          what_was_fixed?: string | null
         }
         Relationships: [
           {
@@ -587,6 +599,7 @@ export type Database = {
           sla_due_at: string | null
           state_name: string | null
           submitted_at: string | null
+          submission_key: string | null
           updated_at: string
           urgency: Database["public"]["Enums"]["urgency_level"]
         }
@@ -612,6 +625,7 @@ export type Database = {
           sla_due_at?: string | null
           state_name?: string | null
           submitted_at?: string | null
+          submission_key?: string | null
           updated_at?: string
           urgency?: Database["public"]["Enums"]["urgency_level"]
         }
@@ -637,6 +651,7 @@ export type Database = {
           sla_due_at?: string | null
           state_name?: string | null
           submitted_at?: string | null
+          submission_key?: string | null
           updated_at?: string
           urgency?: Database["public"]["Enums"]["urgency_level"]
         }
@@ -674,6 +689,56 @@ export type Database = {
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      grievance_priorities: {
+        Row: {
+          assignment_started_at: string | null
+          escalation_level: number
+          evaluated_at: string
+          first_opened_at: string | null
+          grievance_id: string
+          last_meaningful_government_action_at: string | null
+          next_escalation_at: string | null
+          priority_level: Database["public"]["Enums"]["priority_level"]
+          priority_reasons: string[]
+          priority_score: number
+          waiting_on_citizen: boolean
+        }
+        Insert: {
+          assignment_started_at?: string | null
+          escalation_level?: number
+          evaluated_at?: string
+          first_opened_at?: string | null
+          grievance_id: string
+          last_meaningful_government_action_at?: string | null
+          next_escalation_at?: string | null
+          priority_level?: Database["public"]["Enums"]["priority_level"]
+          priority_reasons?: string[]
+          priority_score?: number
+          waiting_on_citizen?: boolean
+        }
+        Update: {
+          assignment_started_at?: string | null
+          escalation_level?: number
+          evaluated_at?: string
+          first_opened_at?: string | null
+          grievance_id?: string
+          last_meaningful_government_action_at?: string | null
+          next_escalation_at?: string | null
+          priority_level?: Database["public"]["Enums"]["priority_level"]
+          priority_reasons?: string[]
+          priority_score?: number
+          waiting_on_citizen?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "grievance_priorities_grievance_id_fkey"
+            columns: ["grievance_id"]
+            isOneToOne: true
+            referencedRelation: "grievances"
             referencedColumns: ["id"]
           },
         ]
@@ -975,37 +1040,58 @@ export type Database = {
         Row: {
           action_taken: string
           authored_by: string | null
+          citizen_next_step: string | null
           created_at: string
+          current_blocker: string | null
+          evidence_reference: string | null
           effective_from: string | null
+          expected_date: string | null
+          expected_next_step: string | null
           grievance_id: string
           id: string
           is_interim: boolean
           organization_id: string | null
           outcome_claimed: Database["public"]["Enums"]["outcome_state"]
+          partial_or_unresolved_reason: string | null
+          resolution_narrative: string | null
           updated_at: string
         }
         Insert: {
           action_taken: string
           authored_by?: string | null
+          citizen_next_step?: string | null
           created_at?: string
+          current_blocker?: string | null
+          evidence_reference?: string | null
           effective_from?: string | null
+          expected_date?: string | null
+          expected_next_step?: string | null
           grievance_id: string
           id?: string
           is_interim?: boolean
           organization_id?: string | null
           outcome_claimed?: Database["public"]["Enums"]["outcome_state"]
+          partial_or_unresolved_reason?: string | null
+          resolution_narrative?: string | null
           updated_at?: string
         }
         Update: {
           action_taken?: string
           authored_by?: string | null
+          citizen_next_step?: string | null
           created_at?: string
+          current_blocker?: string | null
+          evidence_reference?: string | null
           effective_from?: string | null
+          expected_date?: string | null
+          expected_next_step?: string | null
           grievance_id?: string
           id?: string
           is_interim?: boolean
           organization_id?: string | null
           outcome_claimed?: Database["public"]["Enums"]["outcome_state"]
+          partial_or_unresolved_reason?: string | null
+          resolution_narrative?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -1037,7 +1123,26 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      citizen_confirm_resolution: {
+        Args: { p_confirmation: Database["public"]["Enums"]["citizen_confirmation_state"]; p_evidence_document_id: string | null; p_grievance_id: string; p_requested_correction: string; p_what_remains_unresolved: string; p_what_was_fixed: string }
+        Returns: undefined
+      }
+      citizen_create_appeal: { Args: { p_grievance_id: string; p_grounds: string; p_requested_relief: string }; Returns: string }
+      appellate_record_appeal_decision: { Args: { p_appeal_id: string; p_decision_reasons: string; p_decision_summary: string }; Returns: undefined }
+      appellate_request_office_reply: { Args: { p_appeal_id: string; p_instructions: string }; Returns: string }
+      officer_reply_to_appeal: { Args: { p_appeal_id: string; p_reply: string }; Returns: string }
+      officer_add_interim_update: {
+        Args: { p_action_completed: string; p_current_blocker: string; p_expected_date: string | null; p_expected_next_step: string; p_grievance_id: string }
+        Returns: string
+      }
+      officer_request_clarification: { Args: { p_grievance_id: string; p_instructions: string }; Returns: undefined }
+      officer_request_documents: { Args: { p_due_at: string | null; p_grievance_id: string; p_instructions: string; p_items: Json }; Returns: string }
+      officer_mark_grievance_opened: { Args: { p_grievance_id: string }; Returns: string }
+      officer_submit_resolution: {
+        Args: { p_action_taken: string; p_citizen_next_step: string; p_evidence_reference: string; p_grievance_id: string; p_outcome_achieved: string; p_partial_or_unresolved_reason: string; p_resolution_narrative: string }
+        Returns: string
+      }
+      officer_transfer_grievance: { Args: { p_grievance_id: string; p_organization_id: string; p_reason: string }; Returns: undefined }
     }
     Enums: {
       actor_type: "citizen" | "officer" | "system" | "ai_advisor"
@@ -1084,6 +1189,7 @@ export type Database = {
         | "PARTIALLY_RESOLVED"
         | "RESOLUTION_PROPOSED"
         | "RESOLVED"
+      priority_level: "NORMAL" | "ELEVATED" | "HIGH" | "CRITICAL"
       urgency_level: "routine" | "time_sensitive" | "urgent"
     }
     CompositeTypes: {
@@ -1261,6 +1367,7 @@ export const Constants = {
         "RESOLUTION_PROPOSED",
         "RESOLVED",
       ],
+      priority_level: ["NORMAL", "ELEVATED", "HIGH", "CRITICAL"],
       urgency_level: ["routine", "time_sensitive", "urgent"],
     },
   },

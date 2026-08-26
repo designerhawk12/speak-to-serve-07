@@ -71,3 +71,15 @@ means critical/escalation.
 
 Changes stay scoped to the request. No opportunistic rewrites of routing, data access, styling, or
 components that the task did not require.
+
+## 13. Existing database and RLS must be preserved
+
+Before altering database work, inspect the existing migrations. Use the connected Supabase project;
+never recreate existing tables or weaken RLS to work around an application issue. Service-role and
+secret credentials stay server-side and must never be exposed in browser code.
+
+## 14. Implementation status is part of the contract
+
+Before beginning a new feature, read `docs/IMPLEMENTATION_STATUS.md`. Update it when feature work
+finishes so the next contributor can distinguish verified behaviour, incomplete wiring, and known
+limitations.

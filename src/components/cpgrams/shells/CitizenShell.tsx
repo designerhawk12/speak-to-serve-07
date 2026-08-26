@@ -22,7 +22,7 @@ export function CitizenShell({ children }: { children: React.ReactNode }) {
       </AppHeader>
 
       <main className="page-container flex-1 py-6 md:py-10">
-        <RoleGuard allow={["citizen"]}>{children}</RoleGuard>
+        <RoleGuard>{children}</RoleGuard>
       </main>
 
       <CitizenNav variant="bottom" />

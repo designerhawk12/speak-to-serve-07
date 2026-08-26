@@ -1,4 +1,7 @@
-import { createFileRoute, Link, Outlet } from "@tanstack/react-router";
+import { Navigate, createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
+import { LoadingState } from "@/components/cpgrams/LoadingState";
+import { roleHomePath } from "@/lib/cpgrams/auth-routing";
+import { useSession } from "@/lib/cpgrams/session";
 import { Landmark } from "lucide-react";
 
 export const Route = createFileRoute("/auth")({
@@ -6,6 +9,19 @@ export const Route = createFileRoute("/auth")({
 });
 
 function AuthLayout() {
+  const { session, user, isLoading, profileState } = useSession();
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+
+  const isRecoveryRoute = pathname === "/auth/forgot-password";
+
+  if (!isRecoveryRoute && (isLoading || (session && profileState === "loading"))) {
+    return <LoadingState label="Restoring your session" />;
+  }
+
+  // A verified recovery OTP creates a normal Supabase session before the user
+  // sets the new password, so this route must remain mounted for that step.
+  if (user && !isRecoveryRoute) return <Navigate to={roleHomePath(user.role)} replace />;
+
   return (
     <div className="flex min-h-screen flex-col bg-surface-sunken">
       <div className="gov-band">

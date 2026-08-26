@@ -184,8 +184,11 @@ export interface GrievanceSummary {
   /** Original citizen text, never rewritten. */
   originalText: string;
   shortTitle: string;
+  urgency?: "routine" | "time_sensitive" | "urgent";
   office?: string;
+  category?: string;
   lodgedAt: string;
+  lastUpdated: string;
   adminStatus: AdminStatus;
   citizenOutcome: CitizenOutcomeStatus;
   appealStatus: AppealStatus;

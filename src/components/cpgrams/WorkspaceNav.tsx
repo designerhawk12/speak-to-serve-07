@@ -1,5 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { BarChart3, Gavel, Layers, LayoutDashboard, Scale } from "lucide-react";
+import { canAccessRoute } from "@/lib/cpgrams/auth-routing";
+import { useSession } from "@/lib/cpgrams/session";
 import { cn } from "@/lib/utils";
 
 const WORKSPACE_LINKS = [
@@ -15,12 +17,15 @@ const WORKSPACE_LINKS = [
  * a horizontal scrollable bar on mobile, a fixed rail on desktop.
  */
 export function WorkspaceNav({ className }: { className?: string }) {
+  const { user } = useSession();
+  const visibleLinks = user ? WORKSPACE_LINKS.filter((link) => canAccessRoute(user.role, link.to)) : [];
+
   return (
     <nav
       className={cn("flex gap-1 overflow-x-auto lg:flex-col lg:overflow-visible", className)}
       aria-label="Government workspace navigation"
     >
-      {WORKSPACE_LINKS.map(({ to, label, icon: Icon, exact }) => (
+      {visibleLinks.map(({ to, label, icon: Icon, exact }) => (
         <Link
           key={to}
           to={to}
