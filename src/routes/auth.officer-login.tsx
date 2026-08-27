@@ -4,11 +4,13 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PasswordField } from "@/components/cpgrams/PasswordField";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EmailOtpLogin } from "@/components/cpgrams/EmailOtpLogin";
 import { supabase } from "@/integrations/supabase/client";
 import { AUTH_FEATURES } from "@/lib/cpgrams/auth-config";
 import { roleHomePath } from "@/lib/cpgrams/auth-routing";
+import { passwordSignInErrorMessage, validatePasswordLogin } from "@/lib/cpgrams/auth-workflows";
 import { useSession } from "@/lib/cpgrams/session";
 
 export const Route = createFileRoute("/auth/officer-login")({
@@ -38,6 +40,11 @@ function OfficerLoginPage() {
 
   const signIn = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    const validation = validatePasswordLogin(email, password);
+    if (validation) {
+      setError(validation);
+      return;
+    }
     setBusy(true);
     setError(null);
     const { data, error: signInError } = await supabase.auth.signInWithPassword({
@@ -45,9 +52,7 @@ function OfficerLoginPage() {
       password,
     });
     if (signInError || !data.user) {
-      setError(
-        "We could not sign you in with those details. Check your email and password, then try again.",
-      );
+      setError(passwordSignInErrorMessage(signInError));
       setBusy(false);
       return;
     }
@@ -86,17 +91,15 @@ function OfficerLoginPage() {
                     required
                   />
                 </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="officer-password">Password</Label>
-                  <Input
-                    id="officer-password"
-                    type="password"
-                    autoComplete="current-password"
-                    value={password}
-                    onChange={(event) => setPassword(event.target.value)}
-                    required
-                  />
-                </div>
+                <PasswordField
+                  id="officer-password"
+                  label="Password"
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={setPassword}
+                  required
+                  helpText="Use the password for your official account."
+                />
                 <Button type="submit" className="w-full" disabled={busy}>
                   {busy ? "Signing in…" : "Sign in"}
                 </Button>
@@ -116,17 +119,15 @@ function OfficerLoginPage() {
                 required
               />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="officer-password">Password</Label>
-              <Input
-                id="officer-password"
-                type="password"
-                autoComplete="current-password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                required
-              />
-            </div>
+            <PasswordField
+              id="officer-password"
+              label="Password"
+              autoComplete="current-password"
+              value={password}
+              onChange={setPassword}
+              required
+              helpText="Use the password for your official account."
+            />
             <Button type="submit" className="w-full" disabled={busy}>
               {busy ? "Signing in…" : "Sign in"}
             </Button>
@@ -142,7 +143,11 @@ function OfficerLoginPage() {
           in.
         </p>
         <p className="text-sm">
-          <Link to="/auth/forgot-password" className="font-medium text-primary hover:underline">
+          <Link
+            to="/auth/forgot-password"
+            search={{ recovery: false }}
+            className="font-medium text-primary hover:underline"
+          >
             Forgot your password?
           </Link>
         </p>

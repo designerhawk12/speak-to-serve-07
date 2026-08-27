@@ -20,14 +20,14 @@ const user = { id: "auth-user" } as User;
 const session = { user } as Session;
 
 function authMock(overrides: Partial<OtpAuthApi> = {}) {
-  const calls: Array<{ method: string; input: unknown }> = [];
+  const calls: Array<{ method: string; input: unknown; options?: unknown }> = [];
   const auth: OtpAuthApi = {
     signInWithOtp: async (input) => {
       calls.push({ method: "signInWithOtp", input });
       return { data: {}, error: null };
     },
-    resetPasswordForEmail: async (input) => {
-      calls.push({ method: "resetPasswordForEmail", input });
+    resetPasswordForEmail: async (input, options) => {
+      calls.push({ method: "resetPasswordForEmail", input, options });
       return { data: {}, error: null };
     },
     verifyOtp: async (input) => {
@@ -120,7 +120,25 @@ describe("Supabase recovery OTP", () => {
   test("requests recovery through resetPasswordForEmail", async () => {
     const { auth, calls } = authMock();
     await requestRecoveryOtp("citizen@example.in", auth);
-    expect(calls).toEqual([{ method: "resetPasswordForEmail", input: "citizen@example.in" }]);
+    expect(calls).toEqual([
+      { method: "resetPasswordForEmail", input: "citizen@example.in", options: undefined },
+    ]);
+  });
+
+  test("keeps the CPGRAMS recovery callback on every recovery email request", async () => {
+    const { auth, calls } = authMock();
+    await requestRecoveryOtp(
+      "citizen@example.in",
+      "https://cpgrams.example.in/auth/callback?type=recovery",
+      auth,
+    );
+    expect(calls).toEqual([
+      {
+        method: "resetPasswordForEmail",
+        input: "citizen@example.in",
+        options: { redirectTo: "https://cpgrams.example.in/auth/callback?type=recovery" },
+      },
+    ]);
   });
 
   test("verifies recovery with recovery type, never email type", async () => {
@@ -142,7 +160,9 @@ describe("Supabase recovery OTP", () => {
 
   test("validates confirmation and updates only Supabase Auth after verification", async () => {
     const { auth, calls } = authMock();
-    expect(validateNewPassword("new-password", "different")).toContain("does not match");
+    expect(validateNewPassword("new-password", "different")).toBe(
+      "New password and confirmation password do not match.",
+    );
     await updateRecoveredPassword("new-password", "new-password", true, auth);
     expect(calls).toEqual([{ method: "updateUser", input: { password: "new-password" } }]);
   });

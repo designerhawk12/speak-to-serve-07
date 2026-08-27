@@ -8,7 +8,9 @@ export function createAuthFeatures(developmentMode: boolean) {
     passwordSignIn: true,
     emailOtp: true,
     passwordRecovery: true,
-    emailConfirmation: !developmentMode,
+    // The UI supports both project settings. Supabase determines whether a
+    // sign-up returns a session or a confirmation link.
+    emailConfirmation: true,
   });
 }
 

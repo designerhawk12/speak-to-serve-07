@@ -74,7 +74,7 @@ describe("development authentication workflows", () => {
       developmentMode: true,
       emailOtp: true,
       passwordRecovery: true,
-      emailConfirmation: false,
+      emailConfirmation: true,
     });
   });
 });

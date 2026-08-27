@@ -12,7 +12,7 @@ function AuthLayout() {
   const { session, user, isLoading, profileState } = useSession();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
 
-  const isRecoveryRoute = pathname === "/auth/forgot-password";
+  const isRecoveryRoute = pathname === "/auth/forgot-password" || pathname === "/auth/callback";
 
   if (!isRecoveryRoute && (isLoading || (session && profileState === "loading"))) {
     return <LoadingState label="Restoring your session" />;

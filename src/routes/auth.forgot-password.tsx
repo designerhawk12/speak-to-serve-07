@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { Label } from "@/components/ui/label";
+import { PasswordField } from "@/components/cpgrams/PasswordField";
 import { supabase } from "@/integrations/supabase/client";
+import { authCallbackUrl } from "@/lib/cpgrams/auth-url";
 import {
   AUTH_OTP_LENGTH,
   AUTH_RESEND_SECONDS,
@@ -20,6 +22,7 @@ import {
 } from "@/lib/cpgrams/auth-otp";
 
 export const Route = createFileRoute("/auth/forgot-password")({
+  validateSearch: (search: Record<string, unknown>) => ({ recovery: search["recovery"] === "1" }),
   head: () => ({ meta: [{ title: "Reset your password — CPGRAMS Resolution Workspace" }] }),
   component: ForgotPasswordPage,
 });
@@ -27,6 +30,8 @@ export const Route = createFileRoute("/auth/forgot-password")({
 type RecoveryStage = "email" | "otp" | "password" | "complete";
 
 function ForgotPasswordPage() {
+  const navigate = useNavigate();
+  const { recovery } = Route.useSearch();
   const [stage, setStage] = useState<RecoveryStage>("email");
   const [email, setEmail] = useState("");
   const [requestedEmail, setRequestedEmail] = useState("");
@@ -39,6 +44,19 @@ function ForgotPasswordPage() {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const requestInFlight = useRef(false);
+
+  useEffect(() => {
+    if (!recovery) return;
+    void supabase.auth.getSession().then(({ data, error: sessionError }) => {
+      if (sessionError || !data.session) {
+        setError("Your recovery link is invalid or has expired. Request a new one and try again.");
+        return;
+      }
+      setRecoveryVerified(true);
+      setStage("password");
+      setMessage("Your recovery link was verified. Set a new password.");
+    });
+  }, [recovery]);
 
   const beginRequest = (operation: NonNullable<typeof busy>) => {
     if (requestInFlight.current) return false;
@@ -64,7 +82,7 @@ function ForgotPasswordPage() {
     setError(null);
     setMessage(null);
     try {
-      const normalized = await requestRecoveryOtp(email);
+      const normalized = await requestRecoveryOtp(email, authCallbackUrl("recovery"));
       setRequestedEmail(normalized);
       setEmail(normalized);
       setOtp("");
@@ -100,7 +118,7 @@ function ForgotPasswordPage() {
     setError(null);
     setMessage(null);
     try {
-      await requestRecoveryOtp(requestedEmail);
+      await requestRecoveryOtp(requestedEmail, authCallbackUrl("recovery"));
       setOtp("");
       setSeconds(AUTH_RESEND_SECONDS);
       setMessage("A new recovery code has been requested.");
@@ -235,30 +253,25 @@ function ForgotPasswordPage() {
         )}
         {stage === "password" && recoveryVerified && (
           <form className="space-y-4" onSubmit={updatePassword}>
-            <div className="space-y-1.5">
-              <Label htmlFor="new-password">New password</Label>
-              <Input
-                id="new-password"
-                type="password"
-                autoComplete="new-password"
-                minLength={8}
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="confirm-password">Confirm new password</Label>
-              <Input
-                id="confirm-password"
-                type="password"
-                autoComplete="new-password"
-                minLength={8}
-                value={confirmation}
-                onChange={(event) => setConfirmation(event.target.value)}
-                required
-              />
-            </div>
+            <PasswordField
+              id="new-password"
+              label="New password"
+              autoComplete="new-password"
+              value={password}
+              onChange={setPassword}
+              minLength={8}
+              required
+              helpText="Use at least 8 characters."
+            />
+            <PasswordField
+              id="confirm-password"
+              label="Confirm new password"
+              autoComplete="new-password"
+              value={confirmation}
+              onChange={setConfirmation}
+              minLength={8}
+              required
+            />
             <Button type="submit" className="w-full" disabled={busy !== null}>
               {busy === "update" ? "Updating…" : "Update password"}
             </Button>
@@ -277,11 +290,21 @@ function ForgotPasswordPage() {
             {error}
           </p>
         )}
-        <p className="text-sm text-muted-foreground">
-          <Link to="/auth/login" className="font-medium text-primary hover:underline">
-            Back to sign in
-          </Link>
-        </p>
+        {stage === "complete" ? (
+          <Button
+            type="button"
+            className="w-full"
+            onClick={() => void navigate({ to: "/auth/login" })}
+          >
+            Continue to sign in
+          </Button>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            <Link to="/auth/login" className="font-medium text-primary hover:underline">
+              Back to sign in
+            </Link>
+          </p>
+        )}
       </CardContent>
     </Card>
   );

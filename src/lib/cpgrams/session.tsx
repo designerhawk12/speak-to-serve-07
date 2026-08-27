@@ -37,7 +37,9 @@ interface SessionValue {
 
 const SessionContext = createContext<SessionValue | null>(null);
 
-function profileToSessionUser(profile: Database["public"]["Tables"]["profiles"]["Row"]): SessionUser {
+function profileToSessionUser(
+  profile: Database["public"]["Tables"]["profiles"]["Row"],
+): SessionUser {
   const sessionUser: SessionUser = {
     id: profile.id,
     name: profile.full_name || profile.email || "Account holder",
@@ -58,6 +60,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profileState, setProfileState] = useState<ProfileState>("loading");
   const [isLoading, setIsLoading] = useState(true);
   const profileRequest = useRef(0);
+  const authEventReceived = useRef(false);
 
   const refreshProfile = useCallback(async (authUser?: User): Promise<SessionUser | null> => {
     const requestId = ++profileRequest.current;
@@ -71,7 +74,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setProfileState("loading");
     const { data, error } = await supabase
       .from("profiles")
-      .select("id, full_name, email, role, organization_id, designation, preferred_language, created_at, updated_at, phone")
+      .select(
+        "id, full_name, email, role, organization_id, designation, preferred_language, created_at, updated_at, phone",
+      )
       .eq("id", authUser.id)
       .maybeSingle();
 
@@ -109,8 +114,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       // Keep Supabase auth callbacks synchronous; querying in the callback can deadlock the client.
+      setProfileState("loading");
+      setIsLoading(false);
       window.setTimeout(() => {
-        void refreshProfile(nextSession.user).finally(() => setIsLoading(false));
+        void refreshProfile(nextSession.user);
       }, 0);
     },
     [refreshProfile],
@@ -122,11 +129,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void supabase.auth.getSession().then(({ data, error }) => {
       if (!mounted) return;
       if (error) console.error("[Auth] Unable to restore the session.", error);
+      // An auth event can arrive before this promise resolves (for example,
+      // immediately after a callback exchange). Never overwrite that newer
+      // event with this older snapshot.
+      if (authEventReceived.current) return;
       applySession(data.session);
     });
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       if (!mounted) return;
+      authEventReceived.current = true;
       applySession(nextSession);
     });
 

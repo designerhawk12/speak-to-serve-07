@@ -19,6 +19,7 @@ import { Route as FaqRouteImport } from './routes/faq'
 import { Route as OfficeRouteImport } from './routes/office'
 import { Route as TrackRouteImport } from './routes/track'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
+import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as AuthForgotPasswordRouteImport } from './routes/auth.forgot-password'
 import { Route as AuthLoginRouteImport } from './routes/auth.login'
 import { Route as AuthOfficerLoginRouteImport } from './routes/auth.officer-login'
@@ -94,6 +95,11 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
   id: '/admin/',
   path: '/admin/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthCallbackRoute = AuthCallbackRouteImport.update({
+  id: '/callback',
+  path: '/callback',
+  getParentRoute: () => AuthRoute,
 } as any)
 const AuthForgotPasswordRoute = AuthForgotPasswordRouteImport.update({
   id: '/forgot-password',
@@ -234,6 +240,7 @@ export interface FileRoutesByFullPath {
   '/faq': typeof FaqRoute
   '/office': typeof OfficeRouteWithChildren
   '/track': typeof TrackRoute
+  '/auth/callback': typeof AuthCallbackRoute
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/officer-login': typeof AuthOfficerLoginRoute
@@ -269,6 +276,7 @@ export interface FileRoutesByTo {
   '/contact': typeof ContactRoute
   '/faq': typeof FaqRoute
   '/track': typeof TrackRoute
+  '/auth/callback': typeof AuthCallbackRoute
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/officer-login': typeof AuthOfficerLoginRoute
@@ -307,6 +315,7 @@ export interface FileRoutesById {
   '/faq': typeof FaqRoute
   '/office': typeof OfficeRouteWithChildren
   '/track': typeof TrackRoute
+  '/auth/callback': typeof AuthCallbackRoute
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/officer-login': typeof AuthOfficerLoginRoute
@@ -346,6 +355,7 @@ export interface FileRouteTypes {
     | '/faq'
     | '/office'
     | '/track'
+    | '/auth/callback'
     | '/auth/forgot-password'
     | '/auth/login'
     | '/auth/officer-login'
@@ -381,6 +391,7 @@ export interface FileRouteTypes {
     | '/contact'
     | '/faq'
     | '/track'
+    | '/auth/callback'
     | '/auth/forgot-password'
     | '/auth/login'
     | '/auth/officer-login'
@@ -418,6 +429,7 @@ export interface FileRouteTypes {
     | '/faq'
     | '/office'
     | '/track'
+    | '/auth/callback'
     | '/auth/forgot-password'
     | '/auth/login'
     | '/auth/officer-login'
@@ -535,6 +547,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/'
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/auth/callback': {
+      id: '/auth/callback'
+      path: '/callback'
+      fullPath: '/auth/callback'
+      preLoaderRoute: typeof AuthCallbackRouteImport
+      parentRoute: typeof AuthRoute
     }
     '/auth/forgot-password': {
       id: '/auth/forgot-password'
@@ -715,6 +734,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthRouteChildren {
+  AuthCallbackRoute: typeof AuthCallbackRoute
   AuthForgotPasswordRoute: typeof AuthForgotPasswordRoute
   AuthLoginRoute: typeof AuthLoginRoute
   AuthOfficerLoginRoute: typeof AuthOfficerLoginRoute
@@ -722,6 +742,7 @@ interface AuthRouteChildren {
 }
 
 const AuthRouteChildren: AuthRouteChildren = {
+  AuthCallbackRoute: AuthCallbackRoute,
   AuthForgotPasswordRoute: AuthForgotPasswordRoute,
   AuthLoginRoute: AuthLoginRoute,
   AuthOfficerLoginRoute: AuthOfficerLoginRoute,

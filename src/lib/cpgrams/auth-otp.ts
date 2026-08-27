@@ -28,7 +28,10 @@ export interface OtpAuthApi {
     email: string;
     options: { shouldCreateUser: false };
   }) => Promise<AuthResult<unknown>>;
-  resetPasswordForEmail: (email: string) => Promise<AuthResult<unknown>>;
+  resetPasswordForEmail: (
+    email: string,
+    options?: { redirectTo?: string },
+  ) => Promise<AuthResult<unknown>>;
   verifyOtp: (input: {
     email: string;
     token: string;
@@ -144,12 +147,21 @@ export async function verifyLoginOtp(
 
 export async function requestRecoveryOtp(
   email: string,
-  auth: OtpAuthApi = browserAuth(),
+  redirectToOrAuth?: string | OtpAuthApi,
+  suppliedAuth?: OtpAuthApi,
 ): Promise<string> {
+  const redirectTo = typeof redirectToOrAuth === "string" ? redirectToOrAuth : undefined;
+  const auth =
+    typeof redirectToOrAuth === "string"
+      ? (suppliedAuth ?? browserAuth())
+      : (redirectToOrAuth ?? browserAuth());
   const normalized = normalizeAuthEmail(email);
   if (!isValidAuthEmail(normalized))
     throw new AuthFlowError("invalid_email", "Enter a valid email address.");
-  const { error } = await auth.resetPasswordForEmail(normalized);
+  const { error } = await auth.resetPasswordForEmail(
+    normalized,
+    redirectTo ? { redirectTo } : undefined,
+  );
   if (error) throw toFlowError(error, "request");
   return normalized;
 }
@@ -172,7 +184,7 @@ export async function verifyRecoveryOtp(
 
 export function validateNewPassword(password: string, confirmation: string): string | null {
   if (password.length < 8) return "Use at least 8 characters for your new password.";
-  if (password !== confirmation) return "The password confirmation does not match.";
+  if (password !== confirmation) return "New password and confirmation password do not match.";
   return null;
 }
 
