@@ -5,6 +5,7 @@ import {
   resolutionConfirmError,
   safeResolutionErrorContext,
 } from "./resolution-debug";
+import { queueRange } from "./officer-assignment";
 
 type Tables = Database["public"]["Tables"];
 export type TableRow<Name extends keyof Tables> = Tables[Name]["Row"];
@@ -41,6 +42,28 @@ export interface GrievanceCollection {
   requestsByGrievance: Record<string, DocumentRequestRow[]>;
   requestItemsByRequest: Record<string, DocumentRequestItemRow[]>;
   prioritiesByGrievance: Record<string, GrievancePriorityRow>;
+}
+
+export type OfficerQueueAssigneeFilter = "all" | "mine" | "other" | "unassigned";
+
+export interface OfficerQueueFilters {
+  page: number;
+  pageSize: number;
+  search?: string;
+  priority?: Database["public"]["Enums"]["priority_level"];
+  administrativeState?: Database["public"]["Enums"]["administrative_state"];
+  organizationId?: string;
+  location?: string;
+  assignee?: OfficerQueueAssigneeFilter;
+  currentUserId: string;
+  appealAttention?: boolean;
+}
+
+export interface AuthorizedGrievancePage extends GrievanceCollection {
+  page: number;
+  pageSize: number;
+  totalCount: number;
+  totalPages: number;
 }
 
 export interface GrievanceWorkspace {
@@ -292,6 +315,63 @@ export async function getAuthorizedGrievances(): Promise<GrievanceCollection> {
     .order("submitted_at", { ascending: false });
   throwIfError(error, "Unable to load authorized grievances");
   return enrichGrievances(data ?? []);
+}
+
+/** Bounded, query-filtered queue. The security-invoker view preserves the
+ * underlying grievance and priority RLS policies. */
+export async function getAuthorizedGrievancePage(
+  filters: OfficerQueueFilters,
+): Promise<AuthorizedGrievancePage> {
+  const { pageSize, page, from, to } = queueRange(filters.page, filters.pageSize);
+  let query = supabase.from("officer_case_queue").select("*", { count: "exact" });
+
+  const search = filters.search?.trim().toLocaleLowerCase();
+  if (search) query = query.ilike("search_text", `%${search}%`);
+  if (filters.priority) query = query.eq("priority_level", filters.priority);
+  if (filters.administrativeState)
+    query = query.eq("administrative_state", filters.administrativeState);
+  if (filters.organizationId) query = query.eq("organization_id", filters.organizationId);
+  if (filters.location?.trim())
+    query = query.ilike("location_text", `%${filters.location.trim()}%`);
+  if (filters.assignee === "mine") query = query.eq("assigned_officer_id", filters.currentUserId);
+  if (filters.assignee === "unassigned") query = query.is("assigned_officer_id", null);
+  if (filters.assignee === "other")
+    query = query
+      .not("assigned_officer_id", "is", null)
+      .neq("assigned_officer_id", filters.currentUserId);
+  if (filters.appealAttention) query = query.eq("has_appeal_attention", true);
+
+  const { data, error, count } = await query
+    .order("priority_score", { ascending: false })
+    .order("submitted_at", { ascending: true, nullsFirst: false })
+    .order("id", { ascending: true })
+    .range(from, to);
+  throwIfError(error, "Unable to load the authorized case page");
+
+  const grievances = (data ?? []).map((queueRow) => {
+    const {
+      category_name: _categoryName,
+      organization_name: _organizationName,
+      priority_level: _priorityLevel,
+      priority_reasons: _priorityReasons,
+      priority_score: _priorityScore,
+      waiting_on_citizen: _waitingOnCitizen,
+      last_meaningful_government_action_at: _lastMeaningfulAction,
+      search_text: _searchText,
+      has_appeal_attention: _hasAppealAttention,
+      ...grievance
+    } = queueRow;
+    return grievance as GrievanceRow;
+  });
+  const collection = await enrichGrievances(grievances);
+  const totalCount = count ?? 0;
+  return {
+    ...collection,
+    page,
+    pageSize,
+    totalCount,
+    totalPages: Math.max(1, Math.ceil(totalCount / pageSize)),
+  };
 }
 
 /** Supervisory metrics use the same RLS-authorized case collection as the office queue. */
@@ -557,7 +637,7 @@ export async function requestOfficerDocuments(input: {
   const { data, error } = await supabase.rpc("officer_request_documents", {
     p_grievance_id: input.grievanceId,
     p_instructions: input.instructions,
-    p_due_at: input.dueAt,
+    p_due_at: input.dueAt as string,
     p_items: input.items.map((item) => ({
       label: item.label,
       description: item.description,
@@ -592,7 +672,7 @@ export async function addOfficerInterimUpdate(input: {
     p_action_completed: input.actionCompleted,
     p_current_blocker: input.currentBlocker,
     p_expected_next_step: input.expectedNextStep,
-    p_expected_date: input.expectedDate,
+    p_expected_date: input.expectedDate as string,
   });
   throwIfError(error, "Unable to add interim update");
   if (!data) throw new Error("Unable to add interim update: record ID was not returned.");
@@ -725,7 +805,7 @@ export async function confirmCitizenResolution(input: {
     p_what_was_fixed: input.whatWasFixed,
     p_what_remains_unresolved: input.whatRemainsUnresolved,
     p_requested_correction: input.requestedCorrection,
-    p_evidence_document_id: input.evidenceDocumentId,
+    p_evidence_document_id: input.evidenceDocumentId as string,
   });
   if (error) {
     resolutionConfirmError("09", "RPC returned an error", {

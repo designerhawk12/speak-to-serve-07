@@ -61,19 +61,24 @@ function OfficeCaseDetail() {
   const markOpened = useMarkGrievanceOpenedMutation(id);
   const notificationsQuery = useNotificationsQuery(user?.id);
   const openedAttempted = useRef(false);
+  const canAct = Boolean(
+    user &&
+    (user.role === "nodal" ||
+      (user.role === "gro" && caseQuery.data?.grievance.assigned_officer_id === user.id)),
+  );
 
   useEffect(() => {
     if (
       !openedAttempted.current &&
       caseQuery.data &&
       user &&
-      ["gro", "nodal"].includes(user.role) &&
+      canAct &&
       !caseQuery.data.priority?.first_opened_at
     ) {
       openedAttempted.current = true;
       markOpened.mutate();
     }
-  }, [caseQuery.data, markOpened, user]);
+  }, [canAct, caseQuery.data, markOpened, user]);
 
   if (caseQuery.isPending) return <LoadingState variant="page" label="Loading case file" />;
   if (caseQuery.isError)
@@ -210,7 +215,7 @@ function OfficeCaseDetail() {
             </Card>
           </section>
 
-          {user && (
+          {user && canAct ? (
             <OfficerCaseActions
               grievanceId={id}
               citizenId={workspace.grievance.citizen_id}
@@ -223,7 +228,17 @@ function OfficeCaseDetail() {
                   }
                 : {})}
             />
-          )}
+          ) : user?.role === "gro" ? (
+            <Card className="border-info/30 bg-info-surface">
+              <CardContent className="space-y-1 p-5">
+                <h2 className="font-semibold text-info">Assigned to another GRO</h2>
+                <p className="text-sm text-info">
+                  Your organization may view this case, but only the assigned GRO or an authorized
+                  Nodal Officer can record case actions.
+                </p>
+              </CardContent>
+            </Card>
+          ) : null}
 
           <section className="space-y-4" aria-labelledby="case-history">
             <h2 id="case-history" className="text-lg font-semibold">

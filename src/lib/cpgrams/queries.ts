@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   getAppealWorkspace,
   getAuthorizedAppeals,
+  getAuthorizedGrievancePage,
   getAuthorizedGrievances,
   getCitizenGrievances,
   getGrievanceWorkspace,
@@ -13,11 +14,14 @@ import {
   getProfile,
   markGrievanceOpened,
 } from "./data-access";
+import type { OfficerQueueFilters } from "./data-access";
 
 export const cpgramsQueryKeys = {
   profile: (userId: string) => ["cpgrams", "profile", userId] as const,
   citizenGrievances: (userId: string) => ["cpgrams", "citizen-grievances", userId] as const,
   authorizedGrievances: ["cpgrams", "authorized-grievances"] as const,
+  authorizedGrievancePage: (filters: OfficerQueueFilters) =>
+    ["cpgrams", "authorized-grievance-page", filters] as const,
   grievance: (id: string) => ["cpgrams", "grievance", id] as const,
   notifications: (userId: string) => ["cpgrams", "notifications", userId] as const,
   authorizedAppeals: ["cpgrams", "authorized-appeals"] as const,
@@ -48,6 +52,15 @@ export function useAuthorizedGrievancesQuery() {
   return useQuery({
     queryKey: cpgramsQueryKeys.authorizedGrievances,
     queryFn: getAuthorizedGrievances,
+  });
+}
+
+export function useAuthorizedGrievancePageQuery(filters: OfficerQueueFilters) {
+  return useQuery({
+    queryKey: cpgramsQueryKeys.authorizedGrievancePage(filters),
+    queryFn: () => getAuthorizedGrievancePage(filters),
+    placeholderData: (previous) => previous,
+    enabled: Boolean(filters.currentUserId),
   });
 }
 

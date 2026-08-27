@@ -12,9 +12,17 @@ import {
 import type { DataTableColumn } from "@/components/cpgrams";
 import { toGrievanceSummary } from "@/lib/cpgrams/data-adapters";
 import { isWaitingOnCitizen, lastMeaningfulActionLabel } from "@/lib/cpgrams/officer-presentation";
-import { queryErrorDetail, useAuthorizedGrievancesQuery } from "@/lib/cpgrams/queries";
 import { ADMIN_STATUS_META, type GrievanceSummary } from "@/lib/cpgrams/types";
-import { PRIORITY_RANK } from "@/lib/cpgrams/priority-engine";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  queryErrorDetail,
+  useAuthorizedGrievancePageQuery,
+  useIntakeTaxonomyQuery,
+  useProfileQuery,
+} from "@/lib/cpgrams/queries";
+import { useSession } from "@/lib/cpgrams/session";
+import { authorizedOrganizationIds } from "@/lib/cpgrams/officer-assignment";
 
 export const Route = createFileRoute("/office/cases/")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -41,9 +49,39 @@ export const Route = createFileRoute("/office/cases/")({
 function OfficeCases() {
   const navigate = useNavigate();
   const { attention } = Route.useSearch();
-  const casesQuery = useAuthorizedGrievancesQuery();
+  const { user } = useSession();
+  const profileQuery = useProfileQuery(user?.id);
+  const taxonomyQuery = useIntakeTaxonomyQuery();
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
   const [search, setSearch] = useState("");
   const [state, setState] = useState("all");
+  const [priority, setPriority] = useState("all");
+  const [organization, setOrganization] = useState("all");
+  const [location, setLocation] = useState("");
+  const [assignee, setAssignee] = useState("all");
+  const casesQuery = useAuthorizedGrievancePageQuery({
+    page,
+    pageSize,
+    currentUserId: user?.id ?? "",
+    ...(search.trim() ? { search } : {}),
+    ...(state !== "all"
+      ? {
+          administrativeState:
+            state as import("@/integrations/supabase/types").Database["public"]["Enums"]["administrative_state"],
+        }
+      : {}),
+    ...(priority !== "all"
+      ? {
+          priority:
+            priority as import("@/integrations/supabase/types").Database["public"]["Enums"]["priority_level"],
+        }
+      : {}),
+    ...(organization !== "all" ? { organizationId: organization } : {}),
+    ...(location.trim() ? { location } : {}),
+    ...(assignee !== "all" ? { assignee: assignee as "mine" | "other" | "unassigned" } : {}),
+    ...(attention === "appeal" ? { appealAttention: true } : {}),
+  });
   const grievances = (casesQuery.data?.grievances ?? []).map((row) =>
     toGrievanceSummary(
       row,
@@ -53,46 +91,15 @@ function OfficeCases() {
       row.category_id ? casesQuery.data?.categories[row.category_id]?.name : undefined,
     ),
   );
-  const rows = useMemo(
-    () =>
-      grievances
-        .filter((row) => {
-          const raw = casesQuery.data?.grievances.find((entry) => entry.id === row.id);
-          const text =
-            `${row.registrationNumber} ${row.shortTitle} ${row.category ?? ""} ${raw?.location_text ?? ""}`.toLocaleLowerCase();
-          const action = isWaitingOnCitizen(row, casesQuery.data?.prioritiesByGrievance[row.id])
-            ? "waiting_citizen"
-            : row.adminStatus;
-          const hasAppealAttention =
-            row.citizenOutcome === "problem_persists" ||
-            (casesQuery.data?.appealsByGrievance[row.id] ?? []).some((appeal) =>
-              ["FILED", "UNDER_REVIEW"].includes(appeal.state),
-            );
-          return (
-            text.includes(search.toLocaleLowerCase()) &&
-            (state === "all" || action === state) &&
-            (!attention || hasAppealAttention)
-          );
-        })
-        .sort((a, b) => {
-          const aPriority = casesQuery.data?.prioritiesByGrievance[a.id];
-          const bPriority = casesQuery.data?.prioritiesByGrievance[b.id];
-          const levelDifference =
-            PRIORITY_RANK[bPriority?.priority_level ?? "NORMAL"] -
-            PRIORITY_RANK[aPriority?.priority_level ?? "NORMAL"];
-          if (levelDifference !== 0) return levelDifference;
-          return (bPriority?.priority_score ?? 0) - (aPriority?.priority_score ?? 0);
-        }),
-    [
-      attention,
-      casesQuery.data?.appealsByGrievance,
-      casesQuery.data?.grievances,
-      casesQuery.data?.prioritiesByGrievance,
-      grievances,
-      search,
-      state,
-    ],
-  );
+  const rows = grievances;
+  const authorizedOrganizations = useMemo(() => {
+    const all = taxonomyQuery.data?.organizations ?? [];
+    const rootId = profileQuery.data?.organization_id;
+    if (!rootId || !user) return [];
+    if (!["gro", "nodal"].includes(user.role)) return [];
+    const ids = authorizedOrganizationIds(all, rootId, user.role === "nodal");
+    return all.filter((entry) => ids.has(entry.id));
+  }, [profileQuery.data?.organization_id, taxonomyQuery.data?.organizations, user]);
 
   const columns: DataTableColumn<GrievanceSummary>[] = [
     {
@@ -172,9 +179,12 @@ function OfficeCases() {
       header: "Assignee",
       hideBelow: "lg",
       cell: (r) =>
-        casesQuery.data?.grievances.find((entry) => entry.id === r.id)?.assigned_officer_id
-          ? "Assigned"
-          : "Unassigned",
+        casesQuery.data?.grievances.find((entry) => entry.id === r.id)?.assigned_officer_id ===
+        user?.id
+          ? "You"
+          : casesQuery.data?.grievances.find((entry) => entry.id === r.id)?.assigned_officer_id
+            ? "Another officer"
+            : "Unassigned",
     },
   ];
 
@@ -193,26 +203,85 @@ function OfficeCases() {
       <FilterBar
         searchPlaceholder="Search grievance, category, location, or registration"
         searchValue={search}
-        onSearchChange={setSearch}
+        onSearchChange={(value) => {
+          setPage(1);
+          setSearch(value);
+        }}
         filters={[
           {
             id: "admin",
-            label: "Action state",
+            label: "Case state",
             value: state,
             options: [
               { value: "all", label: "All statuses" },
-              { value: "under_review", label: "Waiting for officer" },
-              { value: "waiting_citizen", label: "Waiting for citizen" },
-              { value: "assigned", label: "Newly assigned" },
+              { value: "ASSIGNED", label: "Assigned" },
+              { value: "UNDER_EXAMINATION", label: "Under examination" },
+              { value: "CLARIFICATION_REQUIRED", label: "Waiting for citizen" },
+              { value: "ACTION_IN_PROGRESS", label: "Action in progress" },
+              { value: "RESOLUTION_PROVIDED", label: "Resolution review" },
+            ],
+          },
+          {
+            id: "priority",
+            label: "Priority",
+            value: priority,
+            options: [
+              { value: "all", label: "All priorities" },
+              { value: "CRITICAL", label: "Critical" },
+              { value: "HIGH", label: "High" },
+              { value: "ELEVATED", label: "Elevated" },
+              { value: "NORMAL", label: "Normal" },
+            ],
+          },
+          {
+            id: "organization",
+            label: "Organization",
+            value: organization,
+            options: [
+              { value: "all", label: "All authorized organizations" },
+              ...authorizedOrganizations.map((entry) => ({ value: entry.id, label: entry.name })),
+            ],
+          },
+          {
+            id: "assignee",
+            label: "Assignee",
+            value: assignee,
+            options: [
+              { value: "all", label: "All assignees" },
+              { value: "mine", label: "Assigned to me" },
+              { value: "other", label: "Another officer" },
+              { value: "unassigned", label: "Unassigned" },
             ],
           },
         ]}
-        onFilterChange={(_id, value) => setState(value)}
+        onFilterChange={(id, value) => {
+          setPage(1);
+          if (id === "admin") setState(value);
+          if (id === "priority") setPriority(value);
+          if (id === "organization") setOrganization(value);
+          if (id === "assignee") setAssignee(value);
+        }}
         onReset={() => {
+          setPage(1);
           setSearch("");
           setState("all");
+          setPriority("all");
+          setOrganization("all");
+          setLocation("");
+          setAssignee("all");
         }}
-      />
+      >
+        <Input
+          value={location}
+          onChange={(event) => {
+            setPage(1);
+            setLocation(event.target.value);
+          }}
+          placeholder="Filter location"
+          aria-label="Filter by location"
+          className="min-w-40 md:w-44"
+        />
+      </FilterBar>
 
       {casesQuery.isError ? (
         <ErrorState
@@ -230,6 +299,56 @@ function OfficeCases() {
           emptyDescription="Cases visible under your role and organization scope will appear here."
           isLoading={casesQuery.isPending}
         />
+      )}
+
+      {!casesQuery.isError && !casesQuery.isPending && casesQuery.data && (
+        <div className="flex flex-col gap-3 rounded-lg border border-border bg-surface-raised p-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-muted-foreground">
+            {casesQuery.data.totalCount === 0
+              ? "No cases"
+              : `Showing ${(casesQuery.data.page - 1) * casesQuery.data.pageSize + 1}–${Math.min(casesQuery.data.page * casesQuery.data.pageSize, casesQuery.data.totalCount)} of ${casesQuery.data.totalCount}`}
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="flex items-center gap-2 text-muted-foreground">
+              Per page
+              <select
+                className="h-9 rounded-md border border-input bg-background px-2 text-foreground"
+                value={pageSize}
+                onChange={(event) => {
+                  setPageSize(Number(event.target.value));
+                  setPage(1);
+                }}
+              >
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
+            </label>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={casesQuery.data.page <= 1}
+              onClick={() => setPage((current) => Math.max(1, current - 1))}
+            >
+              Previous
+            </Button>
+            <span aria-live="polite">
+              Page {casesQuery.data.page} of {casesQuery.data.totalPages}
+            </span>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={casesQuery.data.page >= casesQuery.data.totalPages}
+              onClick={() =>
+                setPage((current) => Math.min(casesQuery.data!.totalPages, current + 1))
+              }
+            >
+              Next
+            </Button>
+          </div>
+        </div>
       )}
     </div>
   );
