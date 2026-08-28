@@ -828,6 +828,13 @@ export async function submitOfficerResolution(input: {
   return data;
 }
 
+export async function closeOfficerGrievance(grievanceId: string): Promise<void> {
+  const { error } = await supabase.rpc("officer_close_grievance", {
+    p_grievance_id: grievanceId,
+  });
+  throwIfError(error, "Unable to close case");
+}
+
 /** Officer evidence uses a new private object path and remains subject to Storage and table RLS. */
 export async function uploadOfficerEvidence(input: {
   grievanceId: string;

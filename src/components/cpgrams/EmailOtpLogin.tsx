@@ -12,13 +12,18 @@ import {
   maskAuthEmail,
   normalizeOtpInput,
   requestLoginOtp,
+  requestReviewerLoginOtp,
   verifyLoginOtp,
+  verifyReviewerLoginOtp,
 } from "@/lib/cpgrams/auth-otp";
+import { REVIEWER_DEMO_MODE, REVIEWER_DEMO_OTP } from "@/lib/cpgrams/reviewer-demo";
 
 export function EmailOtpLogin({
   onAuthenticated,
+  reviewerMode = REVIEWER_DEMO_MODE,
 }: {
   onAuthenticated: (user: User) => Promise<void>;
+  reviewerMode?: boolean;
 }) {
   const [email, setEmail] = useState("");
   const [requestedEmail, setRequestedEmail] = useState("");
@@ -53,12 +58,18 @@ export function EmailOtpLogin({
     setError(null);
     setMessage(null);
     try {
-      const normalized = await requestLoginOtp(email);
+      const normalized = reviewerMode
+        ? await requestReviewerLoginOtp(email)
+        : await requestLoginOtp(email);
       setRequestedEmail(normalized);
       setEmail(normalized);
       setOtp("");
       setSeconds(AUTH_RESEND_SECONDS);
-      setMessage("If this email is eligible, a verification code has been sent.");
+      setMessage(
+        reviewerMode
+          ? "Reviewer demo access is ready. No email was sent."
+          : "If this email is eligible, a verification code has been sent.",
+      );
     } catch (requestError) {
       setError(authErrorMessage(requestError));
     } finally {
@@ -72,7 +83,9 @@ export function EmailOtpLogin({
     setError(null);
     setMessage(null);
     try {
-      const { user } = await verifyLoginOtp(requestedEmail, otp);
+      const { user } = reviewerMode
+        ? await verifyReviewerLoginOtp(requestedEmail, otp)
+        : await verifyLoginOtp(requestedEmail, otp);
       setOtp("");
       await onAuthenticated(user!);
     } catch (verifyError) {
@@ -87,7 +100,8 @@ export function EmailOtpLogin({
     setError(null);
     setMessage(null);
     try {
-      await requestLoginOtp(requestedEmail);
+      if (reviewerMode) await requestReviewerLoginOtp(requestedEmail);
+      else await requestLoginOtp(requestedEmail);
       setOtp("");
       setSeconds(AUTH_RESEND_SECONDS);
       setMessage("A new verification code has been requested.");
@@ -130,13 +144,28 @@ export function EmailOtpLogin({
       ) : (
         <form className="space-y-4" onSubmit={verifyOtp}>
           <div className="space-y-1">
-            <h2 className="text-sm font-semibold">Check your email</h2>
+            <h2 className="text-sm font-semibold">
+              {reviewerMode ? "Reviewer demo code" : "Check your email"}
+            </h2>
             <p className="text-sm text-muted-foreground">
-              Enter the code sent to {maskAuthEmail(requestedEmail)}.
+              {reviewerMode
+                ? `Use the displayed mock code for ${maskAuthEmail(requestedEmail)}.`
+                : `Enter the code sent to ${maskAuthEmail(requestedEmail)}.`}
             </p>
           </div>
           <div className="space-y-2">
             <Label htmlFor="otp-code">{AUTH_OTP_LENGTH}-digit verification code</Label>
+            {reviewerMode && (
+              <div className="rounded-md border border-warning/40 bg-warning-surface p-3 text-sm text-warning-foreground">
+                <p className="font-semibold">
+                  Reviewer demo OTP: <code>{REVIEWER_DEMO_OTP}</code>
+                </p>
+                <p className="mt-1 text-xs leading-relaxed">
+                  Demo mode only. In a production deployment this OTP would be delivered through
+                  the configured email/SMS provider.
+                </p>
+              </div>
+            )}
             <InputOTP
               id="otp-code"
               maxLength={AUTH_OTP_LENGTH}

@@ -1,7 +1,9 @@
 import { Link } from "@tanstack/react-router";
 import { Landmark } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useSession, ROLE_LABELS } from "@/lib/cpgrams/session";
+import { useSession } from "@/lib/cpgrams/session";
+import { useLanguage } from "@/lib/cpgrams/language-context";
+import { UI_ROLE_MESSAGE_KEYS } from "@/lib/cpgrams/ui-messages";
 import { LanguageSelector } from "./LanguageSelector";
 
 export interface AppHeaderProps {
@@ -18,14 +20,16 @@ export interface AppHeaderProps {
  */
 export function AppHeader({ children, secondary, className }: AppHeaderProps) {
   const { user } = useSession();
+  const { t } = useLanguage();
+  const roleLabel = user ? t(UI_ROLE_MESSAGE_KEYS[user.role]) : null;
 
   return (
     <header className={cn("sticky top-0 z-40 border-b border-border bg-surface-raised", className)}>
       <div className="gov-band">
         <div className="page-container flex h-8 items-center justify-between text-[11px] font-medium">
-          <span>Government of India · Public Grievance Redress</span>
+          <span>{t("brand.governmentBand")}</span>
           <span className="hidden sm:inline">
-            {user ? `Signed in as ${ROLE_LABELS[user.role]}` : "Not signed in"}
+            {roleLabel ? t("auth.signedInAs", { role: roleLabel }) : t("auth.notSignedIn")}
           </span>
         </div>
       </div>
@@ -37,7 +41,7 @@ export function AppHeader({ children, secondary, className }: AppHeaderProps) {
           </span>
           <span className="leading-tight">
             <span className="block text-sm font-bold tracking-tight">CPGRAMS</span>
-            <span className="block text-[11px] text-muted-foreground">Resolution Workspace</span>
+            <span className="block text-[11px] text-muted-foreground">{t("brand.workspace")}</span>
           </span>
         </Link>
         <div className="flex items-center gap-2">

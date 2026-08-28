@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { PublicShell, StatusChip, KpiCard } from "@/components/cpgrams";
+import { REVIEWER_DEMO_OTP } from "@/lib/cpgrams/reviewer-demo";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -59,6 +60,45 @@ const STEPS = [
 function HomePage() {
   return (
     <PublicShell>
+      <section className="border-b border-critical/30 bg-critical-surface">
+        <div className="page-container py-4 text-critical">
+          <p className="text-sm font-bold tracking-wide uppercase">
+            Demonstration interface — not an official Government of India website
+          </p>
+          <p className="mt-1 text-xs leading-relaxed">
+            Synthetic reviewer data and explicitly mocked reviewer authentication only. No live
+            government system, citizen record, or endorsement is represented.
+          </p>
+        </div>
+      </section>
+
+      <section className="border-b border-warning/30 bg-warning-surface">
+        <div className="page-container grid gap-5 py-5 text-warning-foreground lg:grid-cols-[1fr_auto] lg:items-center">
+          <div className="space-y-2">
+            <p className="text-xs font-bold tracking-wide uppercase">Reviewer quick start</p>
+            <p className="text-sm leading-relaxed">
+              Choose the email OTP tab and use mock reviewer code{" "}
+              <code className="rounded bg-background/70 px-1.5 py-0.5 font-bold">
+                {REVIEWER_DEMO_OTP}
+              </code>
+              . Citizen: <code>citizen.1@demo-data.cpgrams.in</code> or{" "}
+              <code>citizen.2@demo-data.cpgrams.in</code>. Nodal:{" "}
+              <code>nodal@demo-data.cpgrams.in</code>. Appellate:{" "}
+              <code>appellate@demo-data.cpgrams.in</code>. GRO accounts and best cases are listed in
+              the guide.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button asChild size="sm">
+              <Link to="/reviewer-guide">Reviewer Guide / Demo Guide</Link>
+            </Button>
+            <Button asChild size="sm" variant="outline">
+              <Link to="/auth/login">Reviewer login</Link>
+            </Button>
+          </div>
+        </div>
+      </section>
+
       {/* Hero */}
       <section className="border-b border-border bg-surface-raised">
         <div className="page-container grid gap-10 py-14 md:py-20 lg:grid-cols-[1.1fr_0.9fr] lg:gap-16">

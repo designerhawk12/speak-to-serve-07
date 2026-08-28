@@ -5,3 +5,9 @@ project_id = "ptriuuhnesupbdmrmwka"
 # context through the caller-scoped RLS client.
 [functions.ai-gateway]
 verify_jwt = false
+
+# Public only when the separately configured reviewer-mode gate is enabled.
+# The function validates an allowlisted synthetic account + displayed mock code,
+# then creates a normal Supabase Auth session without service-role access.
+[functions.reviewer-auth]
+verify_jwt = false

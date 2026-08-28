@@ -22,7 +22,10 @@ import {
   useProfileQuery,
 } from "@/lib/cpgrams/queries";
 import { useSession } from "@/lib/cpgrams/session";
-import { authorizedOrganizationIds } from "@/lib/cpgrams/officer-assignment";
+import {
+  authorizedOrganizationIds,
+  effectiveNormalQueueAssignee,
+} from "@/lib/cpgrams/officer-assignment";
 
 export const Route = createFileRoute("/office/cases/")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -60,6 +63,12 @@ function OfficeCases() {
   const [organization, setOrganization] = useState("all");
   const [location, setLocation] = useState("");
   const [assignee, setAssignee] = useState("all");
+  // A GRO's normal work queue is assignment-scoped. Nodal officers retain the
+  // broader, RLS-authorized subtree filters needed for supervision.
+  const effectiveAssignee = effectiveNormalQueueAssignee(
+    user?.role,
+    assignee as "all" | "mine" | "other" | "unassigned",
+  );
   const casesQuery = useAuthorizedGrievancePageQuery({
     page,
     pageSize,
@@ -79,7 +88,9 @@ function OfficeCases() {
       : {}),
     ...(organization !== "all" ? { organizationId: organization } : {}),
     ...(location.trim() ? { location } : {}),
-    ...(assignee !== "all" ? { assignee: assignee as "mine" | "other" | "unassigned" } : {}),
+    ...(effectiveAssignee !== "all"
+      ? { assignee: effectiveAssignee as "mine" | "other" | "unassigned" }
+      : {}),
     ...(attention === "appeal" ? { appealAttention: true } : {}),
   });
   const grievances = (casesQuery.data?.grievances ?? []).map((row) =>
@@ -242,17 +253,21 @@ function OfficeCases() {
               ...authorizedOrganizations.map((entry) => ({ value: entry.id, label: entry.name })),
             ],
           },
-          {
-            id: "assignee",
-            label: "Assignee",
-            value: assignee,
-            options: [
-              { value: "all", label: "All assignees" },
-              { value: "mine", label: "Assigned to me" },
-              { value: "other", label: "Another officer" },
-              { value: "unassigned", label: "Unassigned" },
-            ],
-          },
+          ...(user?.role === "gro"
+            ? []
+            : [
+                {
+                  id: "assignee",
+                  label: "Assignee",
+                  value: assignee,
+                  options: [
+                    { value: "all", label: "All assignees" },
+                    { value: "mine", label: "Assigned to me" },
+                    { value: "other", label: "Another officer" },
+                    { value: "unassigned", label: "Unassigned" },
+                  ],
+                },
+              ]),
         ]}
         onFilterChange={(id, value) => {
           setPage(1);

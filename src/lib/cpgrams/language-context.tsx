@@ -8,16 +8,18 @@ import {
   type ReactNode,
 } from "react";
 import {
-  normalizeLanguage,
+  normalizeDisplayLanguage,
   readLocalLanguagePreference,
-  type SupportedLanguage,
+  type DisplayLanguage,
   writeLocalLanguagePreference,
 } from "./language";
 import { useSession } from "./session";
+import { translateUiMessage, type UiMessageKey, type UiMessageValues } from "./ui-messages";
 
 interface LanguageValue {
-  language: SupportedLanguage;
-  setLanguage: (language: SupportedLanguage) => Promise<void>;
+  language: DisplayLanguage;
+  setLanguage: (language: DisplayLanguage) => Promise<void>;
+  t: (key: UiMessageKey, values?: UiMessageValues) => string;
 }
 
 const LanguageContext = createContext<LanguageValue | null>(null);
@@ -29,16 +31,22 @@ const LanguageContext = createContext<LanguageValue | null>(null);
  */
 export function LanguageProvider({ children }: { children: ReactNode }) {
   const { user, updatePreferredLanguage } = useSession();
-  const [language, setLanguageState] = useState<SupportedLanguage>("en");
+  const [language, setLanguageState] = useState<DisplayLanguage>("en");
   const userId = user?.id;
   const preferredLanguage = user?.preferredLanguage;
 
   useEffect(() => {
-    setLanguageState(userId ? normalizeLanguage(preferredLanguage) : readLocalLanguagePreference());
+    setLanguageState(
+      userId ? normalizeDisplayLanguage(preferredLanguage) : readLocalLanguagePreference(),
+    );
   }, [preferredLanguage, userId]);
 
+  useEffect(() => {
+    if (typeof document !== "undefined") document.documentElement.lang = language;
+  }, [language]);
+
   const setLanguage = useCallback(
-    async (nextLanguage: SupportedLanguage) => {
+    async (nextLanguage: DisplayLanguage) => {
       setLanguageState(nextLanguage);
       writeLocalLanguagePreference(nextLanguage);
       if (user) await updatePreferredLanguage(nextLanguage);
@@ -46,7 +54,14 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     [updatePreferredLanguage, user],
   );
 
-  const value = useMemo<LanguageValue>(() => ({ language, setLanguage }), [language, setLanguage]);
+  const t = useCallback(
+    (key: UiMessageKey, values?: UiMessageValues) => translateUiMessage(language, key, values),
+    [language],
+  );
+  const value = useMemo<LanguageValue>(
+    () => ({ language, setLanguage, t }),
+    [language, setLanguage, t],
+  );
   return <LanguageContext.Provider value={value}>{children}</LanguageContext.Provider>;
 }
 

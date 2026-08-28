@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { Bot, Send, ShieldCheck } from "lucide-react";
+import { useState, type FormEvent } from "react";
+import { Link } from "@tanstack/react-router";
+import { ArrowRight, Bot, Send, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
@@ -13,8 +14,6 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { requestCitizenGuidance, type GuidanceResult } from "@/lib/cpgrams/ai-gateway";
 import { useLanguage } from "@/lib/cpgrams/language-context";
-import { useCitizenGrievancesQuery } from "@/lib/cpgrams/queries";
-import { useSession } from "@/lib/cpgrams/session";
 
 interface ChatEntry {
   id: string;
@@ -24,24 +23,11 @@ interface ChatEntry {
 }
 
 export function CitizenGuidanceAssistant() {
-  const { user } = useSession();
   const { language } = useLanguage();
-  const citizenId = user?.role === "citizen" ? user.id : undefined;
-  const casesQuery = useCitizenGrievancesQuery(citizenId);
   const [message, setMessage] = useState("");
-  const [selectedCaseId, setSelectedCaseId] = useState("");
   const [entries, setEntries] = useState<ChatEntry[]>([]);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const cases = useMemo(() => casesQuery.data?.grievances ?? [], [casesQuery.data]);
-
-  // Never leave private case guidance visible after logout or an account switch.
-  useEffect(() => {
-    setSelectedCaseId("");
-    setEntries([]);
-    setMessage("");
-    setError(null);
-  }, [user?.id]);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -58,7 +44,6 @@ export function CitizenGuidanceAssistant() {
       const result = await requestCitizenGuidance({
         message: question,
         language,
-        grievanceId: citizenId && selectedCaseId ? selectedCaseId : null,
       });
       setEntries((current) => [
         ...current,
@@ -95,8 +80,8 @@ export function CitizenGuidanceAssistant() {
             <Bot className="size-5 text-primary" aria-hidden /> Citizen guidance
           </SheetTitle>
           <SheetDescription id="guidance-description">
-            Ask about filing, eligibility, statuses, appeals, or—when signed in—one of your own
-            cases.
+            Ask about this prototype, filing, statuses, required actions, roles, tracking, or
+            appeals.
           </SheetDescription>
         </SheetHeader>
 
@@ -105,35 +90,11 @@ export function CitizenGuidanceAssistant() {
           This assistant gives guidance only. It cannot perform or claim a government action.
         </div>
 
-        {citizenId && (
-          <div className="space-y-2">
-            <Label htmlFor="guidance-case">Case context (optional)</Label>
-            <select
-              id="guidance-case"
-              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-              value={selectedCaseId}
-              onChange={(event) => setSelectedCaseId(event.target.value)}
-              disabled={casesQuery.isPending}
-            >
-              <option value="">General guidance only</option>
-              {cases.map((grievance) => (
-                <option key={grievance.id} value={grievance.id}>
-                  {grievance.registration_number} — {grievance.short_title}
-                </option>
-              ))}
-            </select>
-            <p className="text-xs text-muted-foreground">
-              The server verifies ownership with your session and Supabase RLS before reading a
-              case.
-            </p>
-          </div>
-        )}
-
         <div className="min-h-0 flex-1 space-y-3 overflow-y-auto py-2" aria-live="polite">
           {entries.length === 0 && (
             <div className="rounded-md border border-dashed border-border p-4 text-sm text-muted-foreground">
-              Try “How do I file a grievance?”, “What does awaiting confirmation mean?”, or select
-              your case and ask for its current status.
+              Try “How do I file a grievance?”, “What does Action Required mean?”, or “How do I
+              appeal?” Private case details are available only in the relevant authorized page.
             </div>
           )}
           {entries.map((entry) => (
@@ -142,17 +103,17 @@ export function CitizenGuidanceAssistant() {
               className={`rounded-lg p-3 text-sm ${entry.role === "citizen" ? "ml-8 bg-primary text-primary-foreground" : "mr-6 border border-border bg-surface-sunken"}`}
             >
               <p className="whitespace-pre-wrap">{entry.text}</p>
-              {entry.result && entry.result.suggested_actions.length > 0 && (
-                <ul className="mt-2 list-disc space-y-1 pl-5 text-xs text-muted-foreground">
-                  {entry.result.suggested_actions.map((action) => (
-                    <li key={action}>{action}</li>
-                  ))}
-                </ul>
+              {entry.result?.suggested_route && entry.result.suggested_action_label && (
+                <Button asChild size="sm" variant="outline" className="mt-3">
+                  <Link to={entry.result.suggested_route}>
+                    {entry.result.suggested_action_label}
+                    <ArrowRight className="size-3.5" aria-hidden />
+                  </Link>
+                </Button>
               )}
               {entry.result && (
                 <p className="mt-2 text-[11px] text-muted-foreground">
                   {entry.result.fallback_used ? "Rules-based fallback" : "AI-assisted guidance"}
-                  {entry.result.case_context_used ? " · authorized case context used" : ""}
                 </p>
               )}
             </div>

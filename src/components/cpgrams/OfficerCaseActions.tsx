@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
   addOfficerInterimUpdate,
+  closeOfficerGrievance,
   flagOfficerWrongRoute,
   requestOfficerClarification,
   requestOfficerDocuments,
@@ -18,9 +19,15 @@ import {
   uploadOfficerEvidence,
   type OfficerChecklistItem,
 } from "@/lib/cpgrams/data-access";
+import { compareResolutionWithAi } from "@/lib/cpgrams/ai-gateway";
 import { cpgramsQueryKeys, queryErrorDetail } from "@/lib/cpgrams/queries";
 import { authorizedTransferOrganizationIds } from "@/lib/cpgrams/officer-assignment";
+import {
+  caseClosureAvailability,
+  type CaseClosureEligibilityInput,
+} from "@/lib/cpgrams/officer-case-closure";
 import type { AppRole } from "@/lib/cpgrams/session";
+import { useLanguage } from "@/lib/cpgrams/language-context";
 
 type ActionKind =
   | "clarification"
@@ -30,6 +37,7 @@ type ActionKind =
   | "transfer"
   | "evidence"
   | "resolution"
+  | "close"
   | "appeal_reply";
 const actions: Array<{ id: ActionKind; label: string }> = [
   { id: "clarification", label: "Request clarification" },
@@ -52,6 +60,10 @@ export function OfficerCaseActions({
   actorRole,
   actorOrganizationId,
   sourceOrganizationId,
+  assignedOfficerId,
+  administrativeState,
+  citizenConfirmationState,
+  hasFinalResolution,
 }: {
   grievanceId: string;
   citizenId: string;
@@ -69,6 +81,10 @@ export function OfficerCaseActions({
   actorRole: AppRole;
   actorOrganizationId: string | null;
   sourceOrganizationId: string | null;
+  assignedOfficerId: string | null;
+  administrativeState: CaseClosureEligibilityInput["administrativeState"];
+  citizenConfirmationState: CaseClosureEligibilityInput["citizenConfirmationState"];
+  hasFinalResolution: boolean;
 }) {
   const [active, setActive] = useState<ActionKind | null>(null);
   const [appealReplySuccess, setAppealReplySuccess] = useState("");
@@ -85,6 +101,14 @@ export function OfficerCaseActions({
   const transferOrganizations = organizations.filter((organization) =>
     transferOrganizationIds.has(organization.id),
   );
+  const closure = caseClosureAvailability({
+    actorRole,
+    actorId: userId,
+    assignedOfficerId,
+    administrativeState,
+    citizenConfirmationState,
+    hasFinalResolution,
+  });
   const refresh = async () => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: cpgramsQueryKeys.grievance(grievanceId) }),
@@ -95,9 +119,18 @@ export function OfficerCaseActions({
     ]);
     setActive(null);
   };
-  const visibleActions = appealId
-    ? [...actions, { id: "appeal_reply" as const, label: "Reply to Appellate Authority" }]
-    : actions;
+  const visibleActions = [
+    ...actions,
+    ...(actorRole === "gro" && assignedOfficerId === userId
+      ? [
+          {
+            id: "close" as const,
+            label: administrativeState === "CLOSED" ? "Case closed" : "Close case",
+          },
+        ]
+      : []),
+    ...(appealId ? [{ id: "appeal_reply" as const, label: "Reply to Appellate Authority" }] : []),
+  ];
   return (
     <section className="space-y-3" aria-labelledby="officer-actions">
       <h2 id="officer-actions" className="text-lg font-semibold">
@@ -118,7 +151,10 @@ export function OfficerCaseActions({
                 size="sm"
                 type="button"
                 variant={active === action.id ? "default" : "outline"}
+                disabled={action.id === "close" && !closure.available}
+                aria-describedby={action.id === "close" ? "case-closure-status" : undefined}
                 onClick={() => {
+                  if (action.id === "close" && !closure.available) return;
                   setAppealReplySuccess("");
                   setActive(action.id);
                 }}
@@ -127,6 +163,14 @@ export function OfficerCaseActions({
               </Button>
             ))}
           </div>
+          {actorRole === "gro" && assignedOfficerId === userId && (
+            <p
+              id="case-closure-status"
+              className={`text-xs ${closure.available ? "text-success" : "text-muted-foreground"}`}
+            >
+              {closure.message}
+            </p>
+          )}
           {active === "clarification" && <Clarification grievanceId={grievanceId} done={refresh} />}
           {active === "documents" && <Documents grievanceId={grievanceId} done={refresh} />}
           {active === "interim" && <Interim grievanceId={grievanceId} done={refresh} />}
@@ -149,6 +193,9 @@ export function OfficerCaseActions({
             <Evidence grievanceId={grievanceId} userId={userId} done={refresh} />
           )}
           {active === "resolution" && <Resolution grievanceId={grievanceId} done={refresh} />}
+          {active === "close" && closure.available && (
+            <CloseCase grievanceId={grievanceId} done={refresh} />
+          )}
           {active === "appeal_reply" && appealId && (
             <AppealReply
               appealId={appealId}
@@ -191,6 +238,25 @@ function Failure({ m }: { m: { isError: boolean; error: unknown } }) {
       {queryErrorDetail(m.error)}
     </p>
   ) : null;
+}
+
+function CloseCase({ grievanceId, done }: { grievanceId: string; done: () => Promise<void> }) {
+  const mutation = useMutation({
+    mutationFn: () => closeOfficerGrievance(grievanceId),
+    onSuccess: done,
+  });
+  return (
+    <Shell title="Close case">
+      <p className="text-sm text-muted-foreground">
+        The citizen confirmed that the issue is resolved. Closing removes this case from active work
+        queues while preserving the grievance, resolution, evidence, and full case history.
+      </p>
+      <Button disabled={mutation.isPending} onClick={() => mutation.mutate()}>
+        {mutation.isPending ? "Closing…" : "Confirm case closure"}
+      </Button>
+      <Failure m={mutation} />
+    </Shell>
+  );
 }
 
 function Clarification({ grievanceId, done }: { grievanceId: string; done: () => Promise<void> }) {
@@ -504,6 +570,7 @@ function Evidence({
 }
 
 function Resolution({ grievanceId, done }: { grievanceId: string; done: () => Promise<void> }) {
+  const { language } = useLanguage();
   const [action, setAction] = useState("");
   const [outcome, setOutcome] = useState("");
   const [next, setNext] = useState("");
@@ -523,6 +590,19 @@ function Resolution({ grievanceId, done }: { grievanceId: string; done: () => Pr
       }),
     onSuccess: done,
   });
+  const comparison = useMutation({
+    mutationFn: () =>
+      compareResolutionWithAi({
+        grievanceId,
+        actionTaken: action,
+        outcomeAchieved: outcome,
+        citizenNextStep: next,
+        narrative,
+        partialReason: partial,
+        evidenceReference: evidence,
+        language,
+      }),
+  });
   return (
     <Shell title="Resolution composer">
       <p className="text-sm text-muted-foreground">
@@ -531,7 +611,10 @@ function Resolution({ grievanceId, done }: { grievanceId: string; done: () => Pr
       <Field label="Action taken (required)">
         <Textarea
           value={action}
-          onChange={(e) => setAction(e.target.value)}
+          onChange={(e) => {
+            setAction(e.target.value);
+            comparison.reset();
+          }}
           rows={2}
           placeholder="Record the completed government action."
         />
@@ -539,7 +622,10 @@ function Resolution({ grievanceId, done }: { grievanceId: string; done: () => Pr
       <Field label="Outcome achieved (required)">
         <Textarea
           value={outcome}
-          onChange={(e) => setOutcome(e.target.value)}
+          onChange={(e) => {
+            setOutcome(e.target.value);
+            comparison.reset();
+          }}
           rows={2}
           placeholder="State the outcome claimed by the office."
         />
@@ -547,14 +633,20 @@ function Resolution({ grievanceId, done }: { grievanceId: string; done: () => Pr
       <Field label="Evidence or reference (optional)">
         <Input
           value={evidence}
-          onChange={(e) => setEvidence(e.target.value)}
+          onChange={(e) => {
+            setEvidence(e.target.value);
+            comparison.reset();
+          }}
           placeholder="Reference number or attached evidence description"
         />
       </Field>
       <Field label="Citizen next step (required)">
         <Textarea
           value={next}
-          onChange={(e) => setNext(e.target.value)}
+          onChange={(e) => {
+            setNext(e.target.value);
+            comparison.reset();
+          }}
           rows={2}
           placeholder="Explain what the citizen needs to do next."
         />
@@ -562,7 +654,10 @@ function Resolution({ grievanceId, done }: { grievanceId: string; done: () => Pr
       <Field label="Reason if partially resolved or unresolved">
         <Textarea
           value={partial}
-          onChange={(e) => setPartial(e.target.value)}
+          onChange={(e) => {
+            setPartial(e.target.value);
+            comparison.reset();
+          }}
           rows={2}
           placeholder="Required when the claimed outcome is not complete."
         />
@@ -570,17 +665,99 @@ function Resolution({ grievanceId, done }: { grievanceId: string; done: () => Pr
       <Field label="Resolution narrative (required)">
         <Textarea
           value={narrative}
-          onChange={(e) => setNarrative(e.target.value)}
+          onChange={(e) => {
+            setNarrative(e.target.value);
+            comparison.reset();
+          }}
           rows={4}
           placeholder="Provide a complete, plain-language record of the resolution."
         />
       </Field>
       <div className="rounded-md border border-dashed border-info/40 bg-info-surface p-3 text-sm text-info">
-        <span className="font-semibold">AI Resolution Quality</span>
+        <span className="font-semibold">AI response comparison</span>
         <p className="mt-1 text-xs">
-          Placeholder only. No AI assessment, recommendation, or administrative decision is
-          connected.
+          AI advisory — the officer remains responsible for the final response. This review cannot
+          approve, block, submit, or change the grievance.
         </p>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="mt-3"
+          disabled={comparison.isPending}
+          onClick={() => comparison.mutate()}
+        >
+          {comparison.isPending ? "Reviewing draft" : "Review draft with AI"}
+        </Button>
+        {comparison.isError && (
+          <p className="mt-2 text-sm text-critical" role="alert">
+            {comparison.error instanceof Error
+              ? comparison.error.message
+              : "AI comparison is unavailable. Review the draft manually."}
+          </p>
+        )}
+        {comparison.data && (
+          <div className="mt-3 space-y-2 rounded-md border border-info/25 bg-background p-3 text-sm text-foreground">
+            <p className="font-semibold">
+              Assessment: {comparison.data.assessment.replaceAll("_", " ")}
+            </p>
+            <div className="grid gap-2 md:grid-cols-2">
+              <div className="rounded border border-border p-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Citizen requested
+                </p>
+                <p className="mt-1 whitespace-pre-wrap">{comparison.data.citizen_requested}</p>
+              </div>
+              <div className="rounded border border-border p-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Government says it did
+                </p>
+                <p className="mt-1 whitespace-pre-wrap">{comparison.data.government_says_it_did}</p>
+              </div>
+            </div>
+            {comparison.data.generic_response_warning && (
+              <p className="rounded border border-warning/40 bg-warning-surface p-2 font-medium text-warning">
+                Generic-response warning: this draft may describe processing without confirming the
+                citizen's requested outcome.
+              </p>
+            )}
+            <p>{comparison.data.explanation}</p>
+            {comparison.data.addressed_points.length > 0 && (
+              <div>
+                <p className="font-semibold">Points addressed</p>
+                <ul className="mt-1 list-disc space-y-1 pl-5">
+                  {comparison.data.addressed_points.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {comparison.data.unresolved_points.length > 0 && (
+              <div>
+                <p className="font-semibold">Unresolved points</p>
+                <ul className="mt-1 list-disc space-y-1 pl-5">
+                  {comparison.data.unresolved_points.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {comparison.data.evidence_gap && (
+              <p>
+                <span className="font-semibold">Evidence gap:</span> {comparison.data.evidence_gap}
+              </p>
+            )}
+            <p>
+              <span className="font-semibold">Suggested improvement:</span>{" "}
+              {comparison.data.suggested_improvement}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {comparison.data.fallback_used ? "Deterministic fallback" : comparison.data.provider}{" "}
+              · {comparison.data.prompt_version} · {Math.round(comparison.data.confidence * 100)}%
+              confidence
+            </p>
+          </div>
+        )}
       </div>
       <p className="text-xs text-muted-foreground">
         Submitting asks the citizen to review the government resolution. It does not mark the

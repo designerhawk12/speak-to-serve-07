@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite dev",
     "build": "vite build",
+    "build:reviewer": "vite build --mode reviewer",
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "lint": "eslint .",
@@ -15,6 +16,13 @@
     "demo:priority-scenarios": "bun --env-file=.env scripts/seed-priority-test-scenarios.ts",
     "demo:priority-scenarios:remove": "bun --env-file=.env scripts/seed-priority-test-scenarios.ts --remove",
     "demo:taxonomy:import": "node --env-file=.env scripts/import-taxonomy.mjs",
+    "demo:data:seed": "bun --env-file=.env scripts/seed-demo-data.ts --seed",
+    "demo:data:reset": "bun --env-file=.env scripts/seed-demo-data.ts --reset",
+    "demo:data:check": "bun --env-file=.env scripts/seed-demo-data.ts --dry-run",
+    "reviewer:data:seed": "bun --env-file=.env scripts/seed-demo-data.ts --seed",
+    "reviewer:data:reset": "bun --env-file=.env scripts/seed-demo-data.ts --reset",
+    "reviewer:data:check": "bun --env-file=.env scripts/seed-demo-data.ts --dry-run",
+    "reviewer:data:verify": "bun --env-file=.env scripts/verify-reviewer-data.ts",
     "format": "prettier --write ."
   },
   "overrides": {
@@ -90,7 +98,7 @@
     "globals": "^15.15.0",
     "nitro": "3.0.260603-beta",
     "prettier": "^3.7.3",
-    "supabase": "^2.115.0",
+    "supabase": "^2.116.0",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.56.1",
     "vite": "8.1.5"

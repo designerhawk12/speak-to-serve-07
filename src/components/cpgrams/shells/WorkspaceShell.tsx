@@ -1,12 +1,15 @@
 import { LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useSession, ROLE_LABELS } from "@/lib/cpgrams/session";
+import { useLanguage } from "@/lib/cpgrams/language-context";
+import { useSession } from "@/lib/cpgrams/session";
+import { UI_ROLE_MESSAGE_KEYS } from "@/lib/cpgrams/ui-messages";
 import { AppHeader } from "../AppHeader";
 import { WorkspaceNav } from "../WorkspaceNav";
 import { RoleGuard } from "./RoleGuard";
 
 export function WorkspaceShell({ children }: { children: React.ReactNode }) {
   const { user, signOut } = useSession();
+  const { t } = useLanguage();
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -23,11 +26,11 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
           <span className="hidden text-right text-xs leading-tight sm:block">
             <span className="block font-semibold">{user?.name}</span>
             <span className="block text-muted-foreground">
-              {user ? ROLE_LABELS[user.role] : ""}
+              {user ? t(UI_ROLE_MESSAGE_KEYS[user.role]) : ""}
               {user?.officeLabel ? ` · ${user.officeLabel}` : ""}
             </span>
           </span>
-          <Button variant="ghost" size="sm" onClick={signOut} aria-label="Sign out">
+          <Button variant="ghost" size="sm" onClick={signOut} aria-label={t("auth.signOut")}>
             <LogOut className="size-4" aria-hidden />
           </Button>
         </div>

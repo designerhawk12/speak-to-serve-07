@@ -5,6 +5,7 @@ import {
   EmptyState,
   ErrorState,
   LoadingState,
+  OfficerAiSummaryCard,
   OfficerCaseActions,
   PageHeader,
   PrivateDocumentCard,
@@ -36,6 +37,7 @@ import {
 import { useSession } from "@/lib/cpgrams/session";
 import { transferDeadlineState } from "@/lib/cpgrams/transfer-deadline";
 import { uniqueDocuments } from "@/lib/cpgrams/data-access";
+import { mayOpenNormalOfficerCase } from "@/lib/cpgrams/officer-assignment";
 
 export const Route = createFileRoute("/office/cases/$id")({
   head: () => ({
@@ -96,6 +98,19 @@ function OfficeCaseDetail() {
       <EmptyState
         title="Case not found"
         description="This case does not exist or is outside your authorized case scope."
+      />
+    );
+  if (
+    !mayOpenNormalOfficerCase(
+      user?.role,
+      user?.id,
+      caseQuery.data.grievance.assigned_officer_id,
+    )
+  )
+    return (
+      <EmptyState
+        title="Case not assigned to you"
+        description="A GRO's normal case workspace contains only grievances currently assigned to that GRO. Use the assigned account or an authorized Nodal oversight workspace."
       />
     );
   const workspace = caseQuery.data;
@@ -259,6 +274,13 @@ function OfficeCaseDetail() {
             </Card>
           </section>
 
+          <section className="space-y-3" aria-labelledby="ai-case-summary">
+            <h2 id="ai-case-summary" className="text-lg font-semibold">
+              Advisory AI summary
+            </h2>
+            <OfficerAiSummaryCard grievanceId={id} />
+          </section>
+
           {user && canAct ? (
             <OfficerCaseActions
               grievanceId={id}
@@ -270,6 +292,12 @@ function OfficeCaseDetail() {
               actorRole={user.role}
               actorOrganizationId={user.organizationId}
               sourceOrganizationId={workspace.grievance.organization_id}
+              assignedOfficerId={workspace.grievance.assigned_officer_id}
+              administrativeState={workspace.grievance.administrative_state}
+              citizenConfirmationState={workspace.grievance.citizen_confirmation_state}
+              hasFinalResolution={workspace.resolutions.some(
+                (resolution) => !resolution.is_interim,
+              )}
               {...(workspace.appeals.find((appeal) => appeal.state === "UNDER_REVIEW")
                 ? {
                     appealId: workspace.appeals.find((appeal) => appeal.state === "UNDER_REVIEW")!

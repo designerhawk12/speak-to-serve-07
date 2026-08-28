@@ -1,4 +1,4 @@
-import { supabase } from "@/integrations/supabase/client";
+import { translateWithAiGateway } from "./ai-gateway";
 import {
   detectOriginalLanguage,
   normalizeLanguage,
@@ -33,7 +33,6 @@ class TranslationUnavailableError extends Error {
   }
 }
 
-const translationEndpoint = import.meta.env["VITE_TRANSLATION_EDGE_FUNCTION"]?.trim();
 const translationCache = new Map<string, TranslationDisplay>();
 const MAX_CACHE_ENTRIES = 100;
 const supportedSourceLanguages = new Set<string>(
@@ -50,26 +49,18 @@ function cacheKey(request: TranslationRequest): string {
  */
 export const serverTranslationGateway: TranslationGateway = {
   async translate(request) {
-    if (!translationEndpoint) throw new TranslationUnavailableError();
-    const { data, error } = await supabase.functions.invoke(translationEndpoint, {
-      body: {
-        text: request.text,
-        source_language: request.sourceLanguage,
-        target_language: request.targetLanguage,
-        content_type: request.contentType,
-      },
+    const result = await translateWithAiGateway({
+      text: request.text,
+      sourceLanguage: request.sourceLanguage,
+      targetLanguage: request.targetLanguage,
+      contentType: request.contentType,
     });
-    if (
-      error ||
-      !data ||
-      typeof data.translated_text !== "string" ||
-      !data.translated_text.trim()
-    ) {
+    if (!result.translated || !result.translated_text.trim()) {
       throw new TranslationUnavailableError();
     }
     return {
-      translatedText: data.translated_text,
-      provider: typeof data.provider === "string" ? data.provider : "server",
+      translatedText: result.translated_text,
+      provider: result.provider,
     };
   },
 };

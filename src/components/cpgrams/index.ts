@@ -1,6 +1,7 @@
 export { AppHeader } from "./AppHeader";
 export { LanguageSelector } from "./LanguageSelector";
 export { TranslatedText } from "./TranslatedText";
+export { OfficerAiSummaryCard } from "./OfficerAiSummaryCard";
 export { CitizenGuidanceAssistant } from "./CitizenGuidanceAssistant";
 export { EligibilityGuidanceCard } from "./EligibilityGuidanceCard";
 export { PublicNav } from "./PublicNav";

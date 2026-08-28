@@ -20,6 +20,7 @@ import { Route as DisclaimerRouteImport } from './routes/disclaimer'
 import { Route as FaqRouteImport } from './routes/faq'
 import { Route as OfficeRouteImport } from './routes/office'
 import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as ReviewerGuideRouteImport } from './routes/reviewer-guide'
 import { Route as SitemapRouteImport } from './routes/sitemap'
 import { Route as TrackRouteImport } from './routes/track'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
@@ -103,6 +104,11 @@ const OfficeRoute = OfficeRouteImport.update({
 const PrivacyRoute = PrivacyRouteImport.update({
   id: '/privacy',
   path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReviewerGuideRoute = ReviewerGuideRouteImport.update({
+  id: '/reviewer-guide',
+  path: '/reviewer-guide',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SitemapRoute = SitemapRouteImport.update({
@@ -266,6 +272,7 @@ export interface FileRoutesByFullPath {
   '/faq': typeof FaqRoute
   '/office': typeof OfficeRouteWithChildren
   '/privacy': typeof PrivacyRoute
+  '/reviewer-guide': typeof ReviewerGuideRoute
   '/sitemap': typeof SitemapRoute
   '/track': typeof TrackRoute
   '/auth/callback': typeof AuthCallbackRoute
@@ -306,6 +313,7 @@ export interface FileRoutesByTo {
   '/disclaimer': typeof DisclaimerRoute
   '/faq': typeof FaqRoute
   '/privacy': typeof PrivacyRoute
+  '/reviewer-guide': typeof ReviewerGuideRoute
   '/sitemap': typeof SitemapRoute
   '/track': typeof TrackRoute
   '/auth/callback': typeof AuthCallbackRoute
@@ -349,6 +357,7 @@ export interface FileRoutesById {
   '/faq': typeof FaqRoute
   '/office': typeof OfficeRouteWithChildren
   '/privacy': typeof PrivacyRoute
+  '/reviewer-guide': typeof ReviewerGuideRoute
   '/sitemap': typeof SitemapRoute
   '/track': typeof TrackRoute
   '/auth/callback': typeof AuthCallbackRoute
@@ -393,6 +402,7 @@ export interface FileRouteTypes {
     | '/faq'
     | '/office'
     | '/privacy'
+    | '/reviewer-guide'
     | '/sitemap'
     | '/track'
     | '/auth/callback'
@@ -433,6 +443,7 @@ export interface FileRouteTypes {
     | '/disclaimer'
     | '/faq'
     | '/privacy'
+    | '/reviewer-guide'
     | '/sitemap'
     | '/track'
     | '/auth/callback'
@@ -475,6 +486,7 @@ export interface FileRouteTypes {
     | '/faq'
     | '/office'
     | '/privacy'
+    | '/reviewer-guide'
     | '/sitemap'
     | '/track'
     | '/auth/callback'
@@ -518,6 +530,7 @@ export interface RootRouteChildren {
   FaqRoute: typeof FaqRoute
   OfficeRoute: typeof OfficeRouteWithChildren
   PrivacyRoute: typeof PrivacyRoute
+  ReviewerGuideRoute: typeof ReviewerGuideRoute
   SitemapRoute: typeof SitemapRoute
   TrackRoute: typeof TrackRoute
   DashboardAppealsRoute: typeof DashboardAppealsRoute
@@ -605,6 +618,13 @@ declare module '@tanstack/react-router' {
       path: '/privacy'
       fullPath: '/privacy'
       preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reviewer-guide': {
+      id: '/reviewer-guide'
+      path: '/reviewer-guide'
+      fullPath: '/reviewer-guide'
+      preLoaderRoute: typeof ReviewerGuideRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/sitemap': {
@@ -902,6 +922,7 @@ const rootRouteChildren: RootRouteChildren = {
   FaqRoute: FaqRoute,
   OfficeRoute: OfficeRouteWithChildren,
   PrivacyRoute: PrivacyRoute,
+  ReviewerGuideRoute: ReviewerGuideRoute,
   SitemapRoute: SitemapRoute,
   TrackRoute: TrackRoute,
   DashboardAppealsRoute: DashboardAppealsRoute,

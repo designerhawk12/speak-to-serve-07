@@ -1,45 +1,48 @@
 import { Link } from "@tanstack/react-router";
+import { useLanguage } from "@/lib/cpgrams/language-context";
 import { AppHeader } from "../AppHeader";
 import { PublicNav } from "../PublicNav";
 
 const FOOTER_GROUPS = [
   {
-    title: "For citizens",
+    titleKey: "footer.forCitizens",
     links: [
-      { to: "/citizen/grievances/new" as const, label: "Describe a problem" },
-      { to: "/track" as const, label: "Track a grievance" },
-      { to: "/appeal-status" as const, label: "Check appeal status" },
-      { to: "/faq" as const, label: "Frequently asked questions" },
+      { to: "/citizen/grievances/new" as const, labelKey: "footer.describeProblem" },
+      { to: "/track" as const, labelKey: "footer.trackGrievance" },
+      { to: "/appeal-status" as const, labelKey: "footer.checkAppeal" },
+      { to: "/faq" as const, labelKey: "footer.faq" },
     ],
   },
   {
-    title: "Directories",
+    titleKey: "footer.directories",
     links: [
-      { to: "/officers/central" as const, label: "Central ministries" },
-      { to: "/officers/states" as const, label: "States & UTs" },
-      { to: "/officers/appeals" as const, label: "Appellate authorities" },
+      { to: "/officers/central" as const, labelKey: "footer.centralMinistries" },
+      { to: "/officers/states" as const, labelKey: "footer.states" },
+      { to: "/officers/appeals" as const, labelKey: "footer.appellateAuthorities" },
     ],
   },
   {
-    title: "About",
+    titleKey: "footer.about",
     links: [
-      { to: "/about" as const, label: "How this works" },
-      { to: "/contact" as const, label: "Contact & helpline" },
-      { to: "/auth/officer-login" as const, label: "Government Officer Login" },
+      { to: "/about" as const, labelKey: "footer.howThisWorks" },
+      { to: "/reviewer-guide" as const, labelKey: "footer.reviewerGuide" },
+      { to: "/contact" as const, labelKey: "footer.contact" },
+      { to: "/auth/officer-login" as const, labelKey: "footer.officerLogin" },
     ],
   },
   {
-    title: "Prototype policies",
+    titleKey: "footer.prototypePolicies",
     links: [
-      { to: "/disclaimer" as const, label: "Disclaimer" },
-      { to: "/privacy" as const, label: "Privacy & website policies" },
-      { to: "/accessibility" as const, label: "Accessibility" },
-      { to: "/sitemap" as const, label: "Sitemap" },
+      { to: "/disclaimer" as const, labelKey: "footer.disclaimer" },
+      { to: "/privacy" as const, labelKey: "footer.privacy" },
+      { to: "/accessibility" as const, labelKey: "footer.accessibility" },
+      { to: "/sitemap" as const, labelKey: "footer.sitemap" },
     ],
   },
-];
+] as const;
 
 export function PublicShell({ children }: { children: React.ReactNode }) {
+  const { t } = useLanguage();
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <AppHeader>
@@ -51,15 +54,14 @@ export function PublicShell({ children }: { children: React.ReactNode }) {
       <footer className="border-t border-border bg-surface-sunken">
         <div className="page-container grid gap-8 py-12 sm:grid-cols-2 lg:grid-cols-4">
           <div className="space-y-2">
-            <p className="text-sm font-bold">CPGRAMS Resolution Workspace</p>
+            <p className="text-sm font-bold">CPGRAMS {t("brand.workspace")}</p>
             <p className="text-xs leading-relaxed text-muted-foreground">
-              A redesign of India&apos;s public grievance process, built so cases explain themselves
-              and citizens confirm when a problem is actually solved.
+              {t("footer.description")}
             </p>
           </div>
           {FOOTER_GROUPS.map((g) => (
-            <nav key={g.title} aria-label={g.title} className="space-y-2">
-              <p className="text-xs font-bold tracking-wide uppercase">{g.title}</p>
+            <nav key={g.titleKey} aria-label={t(g.titleKey)} className="space-y-2">
+              <p className="text-xs font-bold tracking-wide uppercase">{t(g.titleKey)}</p>
               <ul className="space-y-1.5">
                 {g.links.map((l) => (
                   <li key={l.to}>
@@ -67,7 +69,7 @@ export function PublicShell({ children }: { children: React.ReactNode }) {
                       to={l.to}
                       className="focus-ring rounded-md text-xs text-muted-foreground hover:text-foreground hover:underline"
                     >
-                      {l.label}
+                      {t(l.labelKey)}
                     </Link>
                   </li>
                 ))}
@@ -77,8 +79,7 @@ export function PublicShell({ children }: { children: React.ReactNode }) {
         </div>
         <div className="border-t border-border bg-warning-surface">
           <p className="page-container py-4 text-xs text-warning-foreground">
-            <strong>Demonstration interface — not an official Government of India website.</strong>{" "}
-            Do not use this prototype as an official service, policy, or support channel.
+            <strong>{t("footer.demoWarning")}</strong> {t("footer.demoInstruction")}
           </p>
         </div>
       </footer>

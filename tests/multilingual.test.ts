@@ -1,10 +1,14 @@
 import { afterEach, expect, test } from "bun:test";
 import {
+  DISPLAY_LANGUAGES,
   detectOriginalLanguage,
   LANGUAGE_PREFERENCE_KEY,
+  SUPPORTED_LANGUAGES,
+  normalizeDisplayLanguage,
   readLocalLanguagePreference,
   writeLocalLanguagePreference,
 } from "../src/lib/cpgrams/language";
+import { UI_MESSAGES, translateUiMessage, type UiMessageKey } from "../src/lib/cpgrams/ui-messages";
 import { createNewGrievanceDraft } from "../src/lib/cpgrams/grievance-draft";
 import {
   clearTranslationCacheForTests,
@@ -45,6 +49,89 @@ test("detects and preserves English, Hindi, and Tamil filing text", () => {
   expect(detectOriginalLanguage(tamil)).toBe("ta");
   expect(hindi).toContain("स्ट्रीटलाइट");
   expect(tamil).toContain("தெருவிளக்கு");
+});
+
+test("keeps every supported intake language available independently of display language", () => {
+  expect(SUPPORTED_LANGUAGES.map((item) => item.code)).toEqual([
+    "en",
+    "hi",
+    "gu",
+    "mr",
+    "bn",
+    "te",
+    "as",
+    "or",
+    "ta",
+    "ml",
+    "ur",
+    "sd",
+    "brx",
+    "kok",
+    "ne",
+    "mni",
+    "pa",
+    "kn",
+    "doi",
+    "mai",
+    "ks",
+    "sa",
+    "sat",
+  ]);
+  expect(detectOriginalLanguage("ನನ್ನ ದೂರು", "kn")).toBe("kn");
+  expect(detectOriginalLanguage("મારી ફરિયાદ", "gu")).toBe("gu");
+  expect(detectOriginalLanguage("ᱤᱧᱟᱹᱜ ᱟᱨᱡᱤ", "sat")).toBe("sat");
+});
+
+test("offers exactly the three reviewed website display languages", () => {
+  expect(DISPLAY_LANGUAGES.map((item) => item.code)).toEqual(["en", "hi", "ta"]);
+  expect(normalizeDisplayLanguage("hi-IN")).toBe("hi");
+  expect(normalizeDisplayLanguage("ta-IN")).toBe("ta");
+  expect(normalizeDisplayLanguage("kn")).toBe("en");
+});
+
+test("has a complete typed English, Hindi, and Tamil shared UI catalog", () => {
+  const englishKeys = Object.keys(UI_MESSAGES.en).sort() as UiMessageKey[];
+  expect(Object.keys(UI_MESSAGES.hi).sort()).toEqual(englishKeys);
+  expect(Object.keys(UI_MESSAGES.ta).sort()).toEqual(englishKeys);
+  for (const language of DISPLAY_LANGUAGES.map((item) => item.code)) {
+    for (const key of englishKeys)
+      expect(UI_MESSAGES[language][key].trim().length).toBeGreaterThan(0);
+  }
+  expect(translateUiMessage("hi", "nav.citizen.grievances")).toBe("मेरी शिकायतें");
+  expect(translateUiMessage("ta", "nav.workspace.cases")).toBe("வழக்குகள்");
+  expect(translateUiMessage("hi", "auth.signedInAs", { role: "नागरिक" })).toBe(
+    "नागरिक के रूप में साइन इन",
+  );
+});
+
+test("shared application shells render copy through the language context", async () => {
+  const contextSource = await Bun.file("src/lib/cpgrams/language-context.tsx").text();
+  expect(contextSource).toContain("document.documentElement.lang = language");
+
+  const selectorSource = await Bun.file("src/components/cpgrams/LanguageSelector.tsx").text();
+  expect(selectorSource).toContain("DISPLAY_LANGUAGES.map");
+  expect(selectorSource).not.toContain("SUPPORTED_LANGUAGES.map");
+
+  const translatedSurfaces = [
+    "src/components/cpgrams/AppHeader.tsx",
+    "src/components/cpgrams/PublicNav.tsx",
+    "src/components/cpgrams/CitizenNav.tsx",
+    "src/components/cpgrams/WorkspaceNav.tsx",
+    "src/components/cpgrams/shells/PublicShell.tsx",
+    "src/components/cpgrams/shells/CitizenShell.tsx",
+    "src/components/cpgrams/shells/WorkspaceShell.tsx",
+    "src/routes/auth.tsx",
+  ];
+  for (const path of translatedSurfaces) {
+    const source = await Bun.file(path).text();
+    expect(source).toContain("useLanguage");
+    expect(source).toMatch(/\bt\(/);
+  }
+
+  const rootSource = await Bun.file("src/routes/__root.tsx").text();
+  expect(rootSource).toContain("translateUiMessage");
+  expect(rootSource).toContain('t("root.notFoundTitle")');
+  expect(rootSource).toContain('t("root.errorTitle")');
 });
 
 test("keeps Unicode grievance, outcome, and clarification text unchanged in the draft contract", () => {

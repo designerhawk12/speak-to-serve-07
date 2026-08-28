@@ -23,6 +23,17 @@ interface AuthResult<T> {
   data: T;
   error: AuthFailureLike | null;
 }
+
+export interface ReviewerOtpApi {
+  invoke: (body: { email: string; code: string }) => Promise<{
+    data: { access_token?: unknown; refresh_token?: unknown } | null;
+    error: unknown | null;
+  }>;
+  setSession: (tokens: { access_token: string; refresh_token: string }) => Promise<{
+    data: { user: User | null; session: Session | null };
+    error: unknown | null;
+  }>;
+}
 export interface OtpAuthApi {
   signInWithOtp: (input: {
     email: string;
@@ -143,6 +154,60 @@ export async function verifyLoginOtp(
   });
   if (error || !data.user || !data.session) throw toFlowError(error ?? {}, "verify");
   return data;
+}
+
+function browserReviewerOtpApi(): ReviewerOtpApi {
+  return {
+    invoke: async (body) => {
+      const { data, error } = await supabase.functions.invoke("reviewer-auth", { body });
+      return {
+        data: data as { access_token?: unknown; refresh_token?: unknown } | null,
+        error,
+      };
+    },
+    setSession: async (tokens) => {
+      const { data, error } = await supabase.auth.setSession(tokens);
+      return { data, error };
+    },
+  };
+}
+
+/** Reviewer-mode request intentionally sends no email. The displayed mock
+ * code is validated by the separately gated server function on submission. */
+export async function requestReviewerLoginOtp(email: string): Promise<string> {
+  const normalized = normalizeAuthEmail(email);
+  if (!isValidAuthEmail(normalized))
+    throw new AuthFlowError("invalid_email", "Enter a valid email address.");
+  return normalized;
+}
+
+export async function verifyReviewerLoginOtp(
+  email: string,
+  token: string,
+  api: ReviewerOtpApi = browserReviewerOtpApi(),
+) {
+  if (!isCompleteOtp(token))
+    throw new AuthFlowError("invalid_otp", `Enter the complete ${AUTH_OTP_LENGTH}-digit code.`);
+
+  const { data, error } = await api.invoke({ email: normalizeAuthEmail(email), code: token });
+  const accessToken = typeof data?.access_token === "string" ? data.access_token : null;
+  const refreshToken = typeof data?.refresh_token === "string" ? data.refresh_token : null;
+  if (error || !accessToken || !refreshToken)
+    throw new AuthFlowError(
+      "invalid_otp",
+      "Reviewer sign-in could not be completed. Check the email and demo code, then try again.",
+    );
+
+  const sessionResult = await api.setSession({
+    access_token: accessToken,
+    refresh_token: refreshToken,
+  });
+  if (sessionResult.error || !sessionResult.data.user || !sessionResult.data.session)
+    throw new AuthFlowError(
+      "invalid_otp",
+      "Reviewer sign-in could not be completed. Check the email and demo code, then try again.",
+    );
+  return sessionResult.data;
 }
 
 export async function requestRecoveryOtp(

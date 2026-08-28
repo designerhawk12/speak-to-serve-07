@@ -2,16 +2,17 @@ import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useLanguage } from "@/lib/cpgrams/language-context";
 import { cn } from "@/lib/utils";
 
 const PUBLIC_LINKS = [
-  { to: "/", label: "Home" },
-  { to: "/track", label: "Track grievance" },
-  { to: "/appeal-status", label: "Appeal status" },
-  { to: "/officers/central", label: "Officer directory" },
-  { to: "/about", label: "How it works" },
-  { to: "/faq", label: "FAQ" },
-  { to: "/contact", label: "Contact" },
+  { to: "/", labelKey: "nav.public.home" },
+  { to: "/track", labelKey: "nav.public.track" },
+  { to: "/appeal-status", labelKey: "nav.public.appealStatus" },
+  { to: "/officers/central", labelKey: "nav.public.officerDirectory" },
+  { to: "/about", labelKey: "nav.public.howItWorks" },
+  { to: "/faq", labelKey: "nav.public.faq" },
+  { to: "/contact", labelKey: "nav.public.contact" },
 ] as const;
 
 const linkClass =
@@ -19,10 +20,11 @@ const linkClass =
 
 export function PublicNav({ className }: { className?: string }) {
   const [open, setOpen] = useState(false);
+  const { t } = useLanguage();
 
   return (
     <div className={cn("flex items-center gap-2", className)}>
-      <nav className="hidden items-center gap-0.5 lg:flex" aria-label="Public navigation">
+      <nav className="hidden items-center gap-0.5 lg:flex" aria-label={t("nav.public.aria")}>
         {PUBLIC_LINKS.map((l) => (
           <Link
             key={l.to}
@@ -31,17 +33,17 @@ export function PublicNav({ className }: { className?: string }) {
             className={linkClass}
             activeProps={{ className: "bg-accent text-accent-foreground" }}
           >
-            {l.label}
+            {t(l.labelKey)}
           </Link>
         ))}
       </nav>
 
       <div className="hidden items-center gap-2 md:flex">
         <Button asChild variant="outline" size="sm">
-          <Link to="/auth/officer-login">Government Officer Login</Link>
+          <Link to="/auth/officer-login">{t("nav.public.officerLogin")}</Link>
         </Button>
         <Button asChild size="sm">
-          <Link to="/auth/login">Citizen Login</Link>
+          <Link to="/auth/login">{t("nav.public.citizenLogin")}</Link>
         </Button>
       </div>
 
@@ -49,7 +51,7 @@ export function PublicNav({ className }: { className?: string }) {
         variant="ghost"
         size="icon"
         className="lg:hidden"
-        aria-label={open ? "Close menu" : "Open menu"}
+        aria-label={open ? t("nav.public.closeMenu") : t("nav.public.openMenu")}
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
       >
@@ -58,19 +60,19 @@ export function PublicNav({ className }: { className?: string }) {
 
       {open && (
         <div className="absolute inset-x-0 top-full border-b border-border bg-surface-raised p-4 shadow-raised lg:hidden">
-          <nav className="flex flex-col gap-1" aria-label="Public navigation">
+          <nav className="flex flex-col gap-1" aria-label={t("nav.public.aria")}>
             {PUBLIC_LINKS.map((l) => (
               <Link key={l.to} to={l.to} className={linkClass} onClick={() => setOpen(false)}>
-                {l.label}
+                {t(l.labelKey)}
               </Link>
             ))}
           </nav>
           <div className="mt-3 grid gap-2">
             <Button asChild size="sm" onClick={() => setOpen(false)}>
-              <Link to="/auth/login">Citizen Login</Link>
+              <Link to="/auth/login">{t("nav.public.citizenLogin")}</Link>
             </Button>
             <Button asChild variant="outline" size="sm" onClick={() => setOpen(false)}>
-              <Link to="/auth/officer-login">Government Officer Login</Link>
+              <Link to="/auth/officer-login">{t("nav.public.officerLogin")}</Link>
             </Button>
           </div>
         </div>

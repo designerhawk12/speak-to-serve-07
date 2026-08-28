@@ -204,6 +204,11 @@ export const PUBLIC_SITEMAP: readonly PublicSitemapEntry[] = [
     description: "A plain-language explanation of the prototype workflow.",
   },
   {
+    path: "/reviewer-guide",
+    label: "Reviewer / Demo Guide",
+    description: "Synthetic accounts, guided journeys, working features, and prototype limits.",
+  },
+  {
     path: "/faq",
     label: "Frequently asked questions",
     description: "Filing, status, eligibility, and account guidance.",

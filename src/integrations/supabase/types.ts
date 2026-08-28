@@ -1550,6 +1550,10 @@ export type Database = {
         };
         Returns: string;
       };
+      officer_close_grievance: {
+        Args: { p_grievance_id: string };
+        Returns: undefined;
+      };
       officer_flag_wrong_route: {
         Args: { p_grievance_id: string; p_reason: string };
         Returns: string;

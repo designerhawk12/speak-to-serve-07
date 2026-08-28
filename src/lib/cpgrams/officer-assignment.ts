@@ -152,3 +152,22 @@ export function queueRange(page: number, pageSize: number) {
   const from = (boundedPage - 1) * boundedPageSize;
   return { page: boundedPage, pageSize: boundedPageSize, from, to: from + boundedPageSize - 1 };
 }
+
+export type OfficerQueueAssigneeSelection = "all" | "mine" | "other" | "unassigned";
+
+/** A GRO's normal queue is always assigned-only. Supervisory roles may use the
+ * broader filters, subject to the underlying RLS-authorized scope. */
+export function effectiveNormalQueueAssignee(
+  role: string | undefined,
+  selected: OfficerQueueAssigneeSelection,
+): OfficerQueueAssigneeSelection {
+  return role === "gro" ? "mine" : selected;
+}
+
+export function mayOpenNormalOfficerCase(
+  role: string | undefined,
+  userId: string | undefined,
+  assignedOfficerId: string | null,
+): boolean {
+  return role !== "gro" || Boolean(userId && assignedOfficerId === userId);
+}

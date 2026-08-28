@@ -1,7 +1,8 @@
 import type { GrievanceInterpretation } from "./ai-contracts";
+import type { IntakeRouteAcceptance } from "./intake-policy";
 
 export interface NewGrievanceDraft {
-  version: 2;
+  version: 3;
   submissionKey: string;
   problem: string;
   interpretation: GrievanceInterpretation | null;
@@ -12,6 +13,7 @@ export interface NewGrievanceDraft {
   categoryId: string | null;
   organizationId: string | null;
   manualTaxonomy: boolean;
+  routingAssistance: "ai_resolved" | "ai_review" | "manual_fallback" | null;
   destinationConfirmed: boolean;
   currentStep: number;
   completedAt: string | null;
@@ -21,7 +23,7 @@ export const newGrievanceDraftKey = (userId: string) => `cpgrams:new-grievance:$
 
 export function createNewGrievanceDraft(): NewGrievanceDraft {
   return {
-    version: 2,
+    version: 3,
     submissionKey: crypto.randomUUID(),
     problem: "",
     interpretation: null,
@@ -32,6 +34,7 @@ export function createNewGrievanceDraft(): NewGrievanceDraft {
     categoryId: null,
     organizationId: null,
     manualTaxonomy: false,
+    routingAssistance: null,
     destinationConfirmed: false,
     currentStep: 1,
     completedAt: null,
@@ -47,27 +50,85 @@ export function restoreNewGrievanceDraft(value: string | null): NewGrievanceDraf
   try {
     if (!value) return createNewGrievanceDraft();
     const parsed = JSON.parse(value) as { version?: unknown; submissionKey?: unknown };
-    if ((parsed.version !== 1 && parsed.version !== 2) || typeof parsed.submissionKey !== "string") return createNewGrievanceDraft();
+    if (![1, 2, 3].includes(Number(parsed.version)) || typeof parsed.submissionKey !== "string")
+      return createNewGrievanceDraft();
     const draft = parsed as Partial<NewGrievanceDraft>;
-    const restored: NewGrievanceDraft = { ...createNewGrievanceDraft(), ...draft, version: 2 };
-    return { ...restored, currentStep: Math.min(8, Math.max(1, Number.isInteger(restored.currentStep) ? restored.currentStep : 1)) };
+    const legacyInterpretation = draft.interpretation as
+      (Partial<GrievanceInterpretation> & { confidence?: number }) | null | undefined;
+    const interpretation = legacyInterpretation
+      ? {
+          ...legacyInterpretation,
+          original_language: legacyInterpretation.original_language ?? "und",
+          route_confidence:
+            legacyInterpretation.route_confidence ?? legacyInterpretation.confidence ?? 0,
+          route_explanation: legacyInterpretation.route_explanation ?? null,
+          intake_type: legacyInterpretation.intake_type ?? "UNCERTAIN",
+          eligibility_guidance: legacyInterpretation.eligibility_guidance ?? null,
+        }
+      : null;
+    if (interpretation && "confidence" in interpretation) delete interpretation.confidence;
+    const restored: NewGrievanceDraft = {
+      ...createNewGrievanceDraft(),
+      ...draft,
+      interpretation: interpretation as GrievanceInterpretation | null,
+      version: 3,
+    };
+    const savedRoutingAssistance = (draft as { routingAssistance?: unknown }).routingAssistance;
+    if (savedRoutingAssistance === "ai") {
+      restored.routingAssistance =
+        interpretation?.suggested_category_id && interpretation.suggested_organization_id
+          ? interpretation.route_confidence < 0.65
+            ? "ai_review"
+            : "ai_resolved"
+          : "manual_fallback";
+    }
+    return {
+      ...restored,
+      currentStep: Math.min(
+        8,
+        Math.max(1, Number.isInteger(restored.currentStep) ? restored.currentStep : 1),
+      ),
+    };
   } catch {
     return createNewGrievanceDraft();
   }
 }
 
-export function advanceNewGrievanceDraft(draft: NewGrievanceDraft, step: number): NewGrievanceDraft {
+export function advanceNewGrievanceDraft(
+  draft: NewGrievanceDraft,
+  step: number,
+): NewGrievanceDraft {
   return { ...draft, currentStep: Math.min(8, Math.max(1, step)) };
-}
-
-export function confirmSuggestedDestination(draft: NewGrievanceDraft, suggestion: { organizationId: string | null; categoryId: string | null }): NewGrievanceDraft | null {
-  if (!suggestion.organizationId || !suggestion.categoryId) return null;
-  return { ...draft, organizationId: suggestion.organizationId, categoryId: suggestion.categoryId, manualTaxonomy: false, destinationConfirmed: true, currentStep: 6 };
 }
 
 export function confirmManualDestination(draft: NewGrievanceDraft): NewGrievanceDraft | null {
   if (!draft.organizationId || !draft.categoryId) return null;
-  return { ...draft, destinationConfirmed: true, currentStep: 6 };
+  return { ...draft, manualTaxonomy: true, destinationConfirmed: true, currentStep: 6 };
+}
+
+export function applyIntakeInterpretation(
+  draft: NewGrievanceDraft,
+  interpretation: GrievanceInterpretation,
+  route: {
+    categoryId: string | null;
+    organizationId: string | null;
+    acceptance: IntakeRouteAcceptance;
+  },
+): NewGrievanceDraft {
+  return {
+    ...draft,
+    interpretation,
+    requestedOutcome: draft.requestedOutcome || interpretation.requested_outcome?.trim() || "",
+    location: draft.location || interpretation.detected_location?.trim() || "",
+    identifiers:
+      draft.identifiers.length > 0 ? draft.identifiers : interpretation.detected_identifiers,
+    // Routing suggestions remain visible, but the citizen selects the actual destination manually.
+    categoryId: draft.categoryId,
+    organizationId: draft.organizationId,
+    manualTaxonomy: true,
+    routingAssistance: route.acceptance === "manual" ? "manual_fallback" : "ai_review",
+    destinationConfirmed: false,
+  };
 }
 
 /**
@@ -104,7 +165,8 @@ export function correctInterpretedProblem(
 }
 
 export function saveNewGrievanceDraft(userId: string, draft: NewGrievanceDraft): void {
-  if (typeof window !== "undefined") window.localStorage.setItem(newGrievanceDraftKey(userId), JSON.stringify(draft));
+  if (typeof window !== "undefined")
+    window.localStorage.setItem(newGrievanceDraftKey(userId), JSON.stringify(draft));
 }
 
 export function clearNewGrievanceDraft(userId: string): void {

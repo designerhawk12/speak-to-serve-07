@@ -14,14 +14,14 @@ import {
   PageHeader,
   StatusChip,
 } from "@/components/cpgrams";
-import { classifyGrievanceEligibility } from "@/lib/cpgrams/ai-gateway";
+import { classifyGrievanceEligibility, interpretGrievanceWithAi } from "@/lib/cpgrams/ai-gateway";
 import type { GrievanceInterpretation } from "@/lib/cpgrams/ai-contracts";
 import { deterministicInterpretationAdapter } from "@/lib/cpgrams/deterministic-interpretation";
 import {
   advanceNewGrievanceDraft,
+  applyIntakeInterpretation,
   clearNewGrievanceDraft,
   confirmManualDestination,
-  confirmSuggestedDestination,
   correctInterpretedProblem,
   createNewGrievanceDraft,
   loadNewGrievanceDraft,
@@ -42,6 +42,7 @@ import { cpgramsQueryKeys, queryErrorDetail, useIntakeTaxonomyQuery } from "@/li
 import { useSession } from "@/lib/cpgrams/session";
 import { detectOriginalLanguage } from "@/lib/cpgrams/language";
 import { useLanguage } from "@/lib/cpgrams/language-context";
+import { resolveActiveIntakeRoute } from "@/lib/cpgrams/intake-policy";
 
 const STEPS = [
   "Describe problem",
@@ -133,14 +134,15 @@ function NewGrievancePage() {
           (organization) => organization.id === suggestedCategory.default_organization_id,
         ) ?? null)
       : null;
-
   const submit = useMutation({
     mutationFn: () =>
       submitNewGrievance({
         citizenId: user!.id,
         submissionKey: draft.submissionKey,
-        originalText: draft.problem.trim(),
-        originalLanguage: detectOriginalLanguage(draft.problem),
+        originalText: draft.problem,
+        originalLanguage:
+          draft.interpretation?.original_language ||
+          detectOriginalLanguage(draft.problem, language),
         shortTitle:
           draft.interpretation?.issue ||
           draft.problem
@@ -186,26 +188,43 @@ function NewGrievancePage() {
     }
     setInterpretationError(null);
     try {
-      const interpretation = await deterministicInterpretationAdapter.interpret({
-        problem: draft.problem,
-        requestedOutcome: draft.requestedOutcome,
-        location: draft.location,
-        taxonomy: categories,
-        organizations,
-      });
-      setDraft((current) => ({
-        ...current,
-        interpretation,
-        categoryId: current.manualTaxonomy
-          ? current.categoryId
-          : (suggestCategoryId(interpretation, categories) ?? current.categoryId),
-        organizationId: current.manualTaxonomy
-          ? current.organizationId
-          : (suggestOrganizationId(interpretation, categories) ?? current.organizationId),
-      }));
+      let interpretation: GrievanceInterpretation;
+      try {
+        const result = await interpretGrievanceWithAi({
+          text: draft.problem,
+          requestedOutcome: draft.requestedOutcome,
+          location: draft.location,
+          language,
+          draft: {
+            identifiers: draft.identifiers,
+            urgency: draft.urgency,
+            selectedOrganizationId: draft.organizationId,
+            selectedCategoryId: draft.categoryId,
+          },
+        });
+        interpretation = result;
+      } catch {
+        interpretation = await deterministicInterpretationAdapter.interpret({
+          problem: draft.problem,
+          requestedOutcome: draft.requestedOutcome,
+          location: draft.location,
+          language,
+          taxonomy: categories,
+          organizations,
+        });
+      }
+      const suggestedRoute = resolveActiveIntakeRoute(interpretation, categories, organizations);
+      setDraft((current) =>
+        applyIntakeInterpretation(current, interpretation, {
+          categoryId: suggestedRoute.categoryId,
+          organizationId: suggestedRoute.organizationId,
+          acceptance:
+            suggestedRoute.categoryId && suggestedRoute.organizationId ? "review" : "manual",
+        }),
+      );
     } catch {
       setInterpretationError(
-        "Interpretation is unavailable right now. You can continue and choose the destination manually.",
+        "AI guidance is unavailable right now. You can continue by choosing the grievance type manually.",
       );
     }
     setDraft((current) => advanceNewGrievanceDraft(current, 2));
@@ -272,20 +291,6 @@ function NewGrievancePage() {
               suggestedCategory={suggestedCategory}
               suggestedOrganization={suggestedOrganization}
               error={destinationError}
-              onConfirmSuggested={() => {
-                const nextDraft = confirmSuggestedDestination(draft, {
-                  categoryId: suggestedCategory?.id ?? null,
-                  organizationId: suggestedOrganization?.id ?? null,
-                });
-                if (!nextDraft) {
-                  setDestinationError(
-                    "The suggested destination is incomplete. Choose Change to select a destination manually.",
-                  );
-                  return;
-                }
-                setDestinationError(null);
-                setDraft(nextDraft);
-              }}
               onConfirmManual={() => {
                 const nextDraft = confirmManualDestination(draft);
                 if (!nextDraft) {
@@ -386,24 +391,32 @@ function InterpretationStep({
         <AlertTriangle className="size-6 text-warning" />
         <h2 className="text-base font-semibold">Continue manually</h2>
         <p className="text-sm text-muted-foreground">
-          The interpretation service is unavailable. You can still add important information, define
-          the outcome you want, and select the destination yourself.
+          AI guidance is unavailable right now. You can continue by choosing the grievance type
+          manually.
         </p>
         {error && <p className="text-sm text-critical">{error}</p>}
       </div>
     );
   return (
     <div className="space-y-4">
+      {error && (
+        <p
+          className="rounded-md border border-warning/35 bg-warning-surface p-3 text-sm"
+          role="alert"
+        >
+          {error}
+        </p>
+      )}
       <div className="rounded-md border border-info/35 bg-info-surface p-3 text-sm">
-        <p className="font-semibold">Deterministic development suggestion</p>
+        <p className="font-semibold">AI suggestion</p>
         <p className="mt-1 text-muted-foreground">
-          This is a local rules-based summary, not an AI decision or a confirmed government
-          destination. Review and correct it before choosing a destination.
+          Based on your description, this grievance may belong to the type and destination below.
+          Please review the suggestion before continuing.
         </p>
       </div>
-      <ReviewItem label="Original description" value={draft.problem} />
+      <ReviewItem label="ORIGINAL DESCRIPTION" value={draft.problem} />
       <div className="space-y-2">
-        <Label htmlFor="interpreted-issue">Interpreted issue</Label>
+        <Label htmlFor="interpreted-issue">WE UNDERSTOOD YOUR PROBLEM AS</Label>
         <Input
           id="interpreted-issue"
           value={interpretation.issue}
@@ -426,7 +439,7 @@ function InterpretationStep({
         />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="review-outcome">Requested outcome</Label>
+        <Label htmlFor="review-outcome">WHAT YOU WANT RESOLVED</Label>
         <Textarea
           id="review-outcome"
           rows={3}
@@ -473,14 +486,20 @@ function InterpretationStep({
         </div>
       </div>
       <div className="rounded-md border border-border p-3 text-sm">
-        <p className="text-xs font-semibold text-muted-foreground">Suggested destination</p>
+        <p className="text-xs font-semibold text-muted-foreground">
+          SUGGESTED GOVERNMENT DESTINATION
+        </p>
         <p className="mt-1 font-medium">
           {interpretation.suggested_organization ?? "No destination suggestion is available"}
         </p>
+        <p className="mt-3 text-xs font-semibold text-muted-foreground">SUGGESTED GRIEVANCE TYPE</p>
         <p className="mt-1 text-muted-foreground">
           {interpretation.suggested_category ?? "No category suggestion is available"}
           {interpretation.suggested_subcategory ? ` › ${interpretation.suggested_subcategory}` : ""}
         </p>
+        {interpretation.route_explanation && (
+          <p className="mt-2 text-xs text-muted-foreground">{interpretation.route_explanation}</p>
+        )}
         <p className="mt-2 text-xs text-muted-foreground">
           Confirm or change this in the next destination step. It will not be submitted until you
           explicitly confirm it.
@@ -488,10 +507,17 @@ function InterpretationStep({
       </div>
       <div className="flex flex-wrap gap-2">
         <StatusChip
-          label={`${Math.round(interpretation.confidence * 100)}% cue match`}
+          label={`${Math.round(interpretation.route_confidence * 100)}% route confidence`}
           tone="info"
         />
+        <StatusChip label={interpretation.intake_type.replaceAll("_", " ")} tone="neutral" />
       </div>
+      {interpretation.eligibility_guidance && (
+        <div className="rounded-md border border-warning/35 bg-warning-surface p-3 text-sm">
+          <p className="font-semibold">Advisory eligibility guidance</p>
+          <p className="mt-1 text-muted-foreground">{interpretation.eligibility_guidance}</p>
+        </div>
+      )}
       {interpretation.missing_recommended.length > 0 && (
         <div className="rounded-md border border-warning/35 bg-warning-surface p-3 text-sm">
           <p className="font-semibold">Helpful information to add</p>
@@ -590,7 +616,6 @@ function DestinationStep({
   suggestedCategory,
   suggestedOrganization,
   error,
-  onConfirmSuggested,
   onConfirmManual,
 }: {
   draft: NewGrievanceDraft;
@@ -615,7 +640,6 @@ function DestinationStep({
   suggestedCategory: { id: string; name: string } | null;
   suggestedOrganization: { id: string; name: string } | null;
   error: string | null;
-  onConfirmSuggested: () => void;
   onConfirmManual: () => void;
 }) {
   const [categorySearch, setCategorySearch] = useState("");
@@ -625,7 +649,7 @@ function DestinationStep({
   return (
     <div className="space-y-5">
       <div className="rounded-lg border border-primary/25 bg-accent p-4">
-        <p className="text-sm font-semibold">We think this belongs to…</p>
+        <p className="text-sm font-semibold">AI suggestion</p>
         <p className="mt-2 text-base font-semibold">
           {suggestedOrganization?.name ??
             draft.interpretation?.suggested_organization ??
@@ -637,99 +661,83 @@ function DestinationStep({
             draft.interpretation?.suggested_category ??
             "No category suggestion is available"}
         </p>
-        <div className="mt-4 flex flex-wrap gap-2">
-          <Button size="sm" onClick={onConfirmSuggested}>
-            Confirm
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() =>
+        <p className="mt-3 text-sm text-muted-foreground">
+          Please review the suggestion before continuing. Choose the grievance type and government
+          destination below; the suggestion is not selected automatically.
+        </p>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-2">
+          <Label htmlFor="category">Category</Label>
+          <Input
+            id="category-search"
+            value={categorySearch}
+            onChange={(event) => setCategorySearch(event.target.value)}
+            placeholder="Search active categories"
+            aria-label="Search active categories"
+          />
+          <select
+            id="category"
+            value={draft.categoryId ?? ""}
+            onChange={(event) =>
               setDraft((current) => ({
                 ...current,
-                manualTaxonomy: true,
+                categoryId: event.target.value || null,
                 destinationConfirmed: false,
               }))
             }
+            className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
           >
-            Change
+            <option value="">Choose a category</option>
+            {visibleCategories.map((category) => (
+              <option key={category.id} value={category.id}>
+                {category.label}
+              </option>
+            ))}
+          </select>
+          <p className="text-xs text-muted-foreground">
+            {visibleCategories.length} of {categories.length} active database categories shown.
+          </p>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="organization">Organization</Label>
+          <Input
+            id="organization-search"
+            value={organizationSearch}
+            onChange={(event) => setOrganizationSearch(event.target.value)}
+            placeholder="Search active organizations"
+            aria-label="Search active organizations"
+          />
+          <select
+            id="organization"
+            value={draft.organizationId ?? ""}
+            onChange={(event) =>
+              setDraft((current) => ({
+                ...current,
+                organizationId: event.target.value || null,
+                destinationConfirmed: false,
+              }))
+            }
+            className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+          >
+            <option value="">Choose an organization</option>
+            {visibleOrganizations.map((organization) => (
+              <option key={organization.id} value={organization.id}>
+                {organization.label}
+              </option>
+            ))}
+          </select>
+          <p className="text-xs text-muted-foreground">
+            {visibleOrganizations.length} of {organizations.length} active database organizations
+            shown.
+          </p>
+        </div>
+        <div className="sm:col-span-2">
+          <Button size="sm" onClick={onConfirmManual}>
+            Confirm destination
           </Button>
         </div>
       </div>
-      {draft.manualTaxonomy && (
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-2">
-            <Label htmlFor="category">Category</Label>
-            <Input
-              id="category-search"
-              value={categorySearch}
-              onChange={(event) => setCategorySearch(event.target.value)}
-              placeholder="Search active categories"
-              aria-label="Search active categories"
-            />
-            <select
-              id="category"
-              value={draft.categoryId ?? ""}
-              onChange={(event) =>
-                setDraft((current) => ({
-                  ...current,
-                  categoryId: event.target.value || null,
-                  destinationConfirmed: false,
-                }))
-              }
-              className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-            >
-              <option value="">Choose a category</option>
-              {visibleCategories.map((category) => (
-                <option key={category.id} value={category.id}>
-                  {category.label}
-                </option>
-              ))}
-            </select>
-            <p className="text-xs text-muted-foreground">
-              {visibleCategories.length} of {categories.length} active database categories shown.
-            </p>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="organization">Organization</Label>
-            <Input
-              id="organization-search"
-              value={organizationSearch}
-              onChange={(event) => setOrganizationSearch(event.target.value)}
-              placeholder="Search active organizations"
-              aria-label="Search active organizations"
-            />
-            <select
-              id="organization"
-              value={draft.organizationId ?? ""}
-              onChange={(event) =>
-                setDraft((current) => ({
-                  ...current,
-                  organizationId: event.target.value || null,
-                  destinationConfirmed: false,
-                }))
-              }
-              className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-            >
-              <option value="">Choose an organization</option>
-              {visibleOrganizations.map((organization) => (
-                <option key={organization.id} value={organization.id}>
-                  {organization.label}
-                </option>
-              ))}
-            </select>
-            <p className="text-xs text-muted-foreground">
-              {visibleOrganizations.length} of {organizations.length} active database organizations
-              shown.
-            </p>
-          </div>
-          <div className="sm:col-span-2">
-            <Button size="sm" onClick={onConfirmManual}>
-              Confirm destination
-            </Button>
-          </div>
-        </div>
-      )}
       {error && (
         <p className="text-sm text-critical" role="alert">
           {error}
@@ -841,28 +849,6 @@ function ReviewItem({ label, value }: { label: string; value: string }) {
       <p className="mt-1 text-sm whitespace-pre-wrap">{value}</p>
     </div>
   );
-}
-function suggestCategoryId(
-  interpretation: GrievanceInterpretation,
-  categories: { id: string; name: string }[],
-) {
-  return (
-    interpretation.suggested_subcategory_id ??
-    interpretation.suggested_category_id ??
-    categories.find(
-      (category) =>
-        category.name ===
-        (interpretation.suggested_subcategory ?? interpretation.suggested_category),
-    )?.id ??
-    null
-  );
-}
-function suggestOrganizationId(
-  interpretation: GrievanceInterpretation,
-  categories: { id: string; name: string; default_organization_id: string | null }[],
-) {
-  const categoryId = suggestCategoryId(interpretation, categories);
-  return categories.find((category) => category.id === categoryId)?.default_organization_id ?? null;
 }
 type StepProps = {
   draft: NewGrievanceDraft;
