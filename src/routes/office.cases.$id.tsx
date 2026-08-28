@@ -13,12 +13,13 @@ import {
   SlaIndicator,
   StatusExplanationCard,
   Timeline,
+  TranslatedText,
 } from "@/components/cpgrams";
 import {
   formatDate,
   formatDateTime,
   toGrievanceSummary,
-  toTimelineEvent,
+  toTimelineEventForViewer,
 } from "@/lib/cpgrams/data-adapters";
 import {
   escalationAudienceLabel,
@@ -33,6 +34,8 @@ import {
   useNotificationsQuery,
 } from "@/lib/cpgrams/queries";
 import { useSession } from "@/lib/cpgrams/session";
+import { transferDeadlineState } from "@/lib/cpgrams/transfer-deadline";
+import { uniqueDocuments } from "@/lib/cpgrams/data-access";
 
 export const Route = createFileRoute("/office/cases/$id")({
   head: () => ({
@@ -102,8 +105,14 @@ function OfficeCaseDetail() {
     workspace.appeals,
     workspace.documentRequests,
   );
-  const timeline = workspace.events.map(toTimelineEvent);
+  const timeline = workspace.events.map((event) => toTimelineEventForViewer(event, "government"));
+  const documents = uniqueDocuments(workspace.documents);
   const waitingOnCitizen = isWaitingOnCitizen(grievance, workspace.priority);
+  const transferDeadline = transferDeadlineState(
+    workspace.grievance.wrong_route_detected_at,
+    workspace.grievance.transfer_due_at,
+    workspace.grievance.wrong_route_resolved_at,
+  );
   const notificationState = notificationsQuery.isPending
     ? { label: "Loading your notification state" }
     : notificationsQuery.isError
@@ -129,6 +138,7 @@ function OfficeCaseDetail() {
               adminStatus={grievance.adminStatus}
               citizenOutcome={grievance.citizenOutcome}
               citizenLaneLabel="Citizen confirmation"
+              viewer="government"
             />
             {waitingOnCitizen && (
               <Card className="border-info/30 bg-info-surface">
@@ -143,6 +153,37 @@ function OfficeCaseDetail() {
                 </CardContent>
               </Card>
             )}
+            {transferDeadline?.pending && (
+              <Card className="border-warning/40 bg-warning-surface">
+                <CardContent className="space-y-3 p-4 text-warning-foreground">
+                  <div>
+                    <p className="text-sm font-semibold">Transfer required</p>
+                    <p className="mt-1 text-sm">
+                      This routing requirement changes attention, not ownership. The current office
+                      remains responsible until an authorized organization transfer completes.
+                    </p>
+                  </div>
+                  <dl className="grid gap-3 text-sm sm:grid-cols-3">
+                    <div>
+                      <dt className="text-xs font-semibold">Received/detected</dt>
+                      <dd className="mt-1">
+                        {formatDateTime(workspace.grievance.wrong_route_detected_at!)}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs font-semibold">Transfer by</dt>
+                      <dd className="mt-1">
+                        {formatDateTime(workspace.grievance.transfer_due_at!)}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs font-semibold">Time remaining</dt>
+                      <dd className="mt-1 font-semibold">{transferDeadline.remainingLabel}</dd>
+                    </div>
+                  </dl>
+                </CardContent>
+              </Card>
+            )}
           </section>
 
           <section className="space-y-3" aria-labelledby="citizen-problem">
@@ -154,9 +195,12 @@ function OfficeCaseDetail() {
                 <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
                   Original grievance, unedited
                 </p>
-                <p className="whitespace-pre-line text-sm leading-relaxed">
-                  {grievance.originalText}
-                </p>
+                <TranslatedText
+                  text={grievance.originalText}
+                  sourceLanguage={workspace.grievance.original_language}
+                  contentType="grievance"
+                  className="text-sm leading-relaxed"
+                />
               </CardContent>
             </Card>
           </section>
@@ -200,8 +244,8 @@ function OfficeCaseDetail() {
                   </p>
                   <p className="mt-1 text-sm">
                     {workspace.documentRequests.find((request) => !request.fulfilled_at)?.reason ??
-                      (workspace.grievance.administrative_state === "CLARIFICATION_REQUIRED"
-                        ? "Clarification requested"
+                      (workspace.clarificationRequests.some((request) => !request.fulfilled_at)
+                        ? "Waiting for citizen clarification"
                         : "No action currently required")}
                   </p>
                 </div>
@@ -221,6 +265,11 @@ function OfficeCaseDetail() {
               citizenId={workspace.grievance.citizen_id}
               userId={user.id}
               organizations={taxonomyQuery.data?.organizations ?? []}
+              transferDueAt={workspace.grievance.transfer_due_at}
+              wrongRouteResolvedAt={workspace.grievance.wrong_route_resolved_at}
+              actorRole={user.role}
+              actorOrganizationId={user.organizationId}
+              sourceOrganizationId={workspace.grievance.organization_id}
               {...(workspace.appeals.find((appeal) => appeal.state === "UNDER_REVIEW")
                 ? {
                     appealId: workspace.appeals.find((appeal) => appeal.state === "UNDER_REVIEW")!
@@ -258,9 +307,9 @@ function OfficeCaseDetail() {
             <h2 id="case-evidence" className="text-lg font-semibold">
               Evidence
             </h2>
-            {workspace.documents.length ? (
+            {documents.length ? (
               <div className="grid gap-2 sm:grid-cols-2">
-                {workspace.documents.map((document) => (
+                {documents.map((document) => (
                   <PrivateDocumentCard key={document.id} document={document} />
                 ))}
               </div>
@@ -301,6 +350,32 @@ function OfficeCaseDetail() {
                 </CardContent>
               </Card>
             ))}
+            {workspace.clarificationRequests.map((request) => (
+              <Card key={request.id} className="border-border">
+                <CardContent className="space-y-2 p-5">
+                  <div className="flex flex-wrap justify-between gap-2">
+                    <h3 className="text-sm font-semibold">Clarification request</h3>
+                    <span className="text-xs text-muted-foreground">
+                      {request.fulfilled_at
+                        ? `Answered ${formatDateTime(request.fulfilled_at)}`
+                        : "Waiting for citizen"}
+                    </span>
+                  </div>
+                  <p className="text-sm text-muted-foreground">{request.question}</p>
+                  {request.response_text && (
+                    <div className="rounded-md border border-success/25 bg-success-surface p-3">
+                      <p className="text-xs font-semibold text-success">Citizen response</p>
+                      <p className="mt-1 text-sm">{request.response_text}</p>
+                    </div>
+                  )}
+                  {!request.fulfilled_at && (
+                    <p className="text-xs text-muted-foreground">
+                      Government inactivity escalation is paused until the citizen responds.
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
             {workspace.messages.map((message) => (
               <Card key={message.id} className="border-border">
                 <CardContent className="space-y-1 p-5">
@@ -312,16 +387,22 @@ function OfficeCaseDetail() {
                       {formatDateTime(message.created_at)}
                     </span>
                   </div>
-                  <p className="text-sm text-muted-foreground">{message.body}</p>
+                  <TranslatedText
+                    text={message.body}
+                    contentType="message"
+                    className="text-sm text-muted-foreground"
+                  />
                 </CardContent>
               </Card>
             ))}
-            {!workspace.documentRequests.length && !workspace.messages.length && (
-              <EmptyState
-                title="No clarification or document requests"
-                description="Citizen and office messages will appear here."
-              />
-            )}
+            {!workspace.documentRequests.length &&
+              !workspace.clarificationRequests.length &&
+              !workspace.messages.length && (
+                <EmptyState
+                  title="No clarification or document requests"
+                  description="Citizen and office messages will appear here."
+                />
+              )}
           </section>
 
           <section className="space-y-4" aria-labelledby="case-resolutions">
@@ -339,7 +420,17 @@ function OfficeCaseDetail() {
                       {formatDate(resolution.created_at)}
                     </span>
                   </div>
-                  <p className="text-sm">{resolution.action_taken}</p>
+                  <TranslatedText
+                    text={resolution.action_taken}
+                    contentType="resolution"
+                    className="text-sm"
+                  />
+                  {resolution.outcome_achieved && (
+                    <div className="text-sm text-muted-foreground">
+                      <span>Outcome achieved: </span>
+                      <TranslatedText text={resolution.outcome_achieved} contentType="resolution" />
+                    </div>
+                  )}
                   <p className="text-sm text-muted-foreground">
                     Claimed outcome: {resolution.outcome_claimed}
                   </p>

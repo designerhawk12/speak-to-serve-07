@@ -3,7 +3,14 @@ begin;
 
 update public.grievances
 set submitted_at = now() - interval '22 days',
-    sla_due_at = now() - interval '1 day'
+    sla_due_at = now() - interval '1 day',
+    administrative_state = 'ACTION_IN_PROGRESS',
+    outcome_state = 'UNKNOWN',
+    citizen_confirmation_state = 'NOT_REQUESTED',
+    government_response_completed_at = null,
+    assigned_officer_id = (
+      select id from public.profiles where email = 'gro@demo.cpgrams.in'
+    )
 where registration_number = 'CPG-2026-STREETLT';
 
 update public.grievance_priorities p

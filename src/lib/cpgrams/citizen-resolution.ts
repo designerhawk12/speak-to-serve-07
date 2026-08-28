@@ -1,4 +1,4 @@
-import type { CitizenResolutionConfirmation, DocumentRow, DocumentRequestRow, MessageRow } from "./data-access";
+import type { CitizenResolutionConfirmation, ClarificationRequestRow, DocumentRow, DocumentRequestRow } from "./data-access";
 
 export function confirmationTransition(confirmation: CitizenResolutionConfirmation) {
   if (confirmation === "CONFIRMED_RESOLVED") return { outcome: "RESOLVED" as const, event: "CITIZEN_CONFIRMED_RESOLVED" };
@@ -17,8 +17,8 @@ export function isResolutionReviewEvidence(document: DocumentRow, citizenId: str
   return document.uploaded_by !== citizenId && ["government_evidence", "resolution_evidence"].includes((document.doc_kind ?? "").toLocaleLowerCase());
 }
 
-export function currentCitizenActionCount(input: { requests: DocumentRequestRow[]; messages: MessageRow[]; administrativeState: string; needsResolutionReview: boolean; appealAvailable: boolean }): number {
+export function currentCitizenActionCount(input: { requests: DocumentRequestRow[]; clarificationRequests: ClarificationRequestRow[]; needsResolutionReview: boolean; appealAvailable: boolean }): number {
   const openDocuments = input.requests.filter((request) => !request.fulfilled_at).length;
-  const clarification = input.administrativeState === "CLARIFICATION_REQUIRED" && input.messages.some((message) => message.sender_type === "officer" && message.citizen_visible) ? 1 : 0;
+  const clarification = input.clarificationRequests.some((request) => !request.fulfilled_at) ? 1 : 0;
   return openDocuments + clarification + Number(input.needsResolutionReview) + Number(input.appealAvailable);
 }

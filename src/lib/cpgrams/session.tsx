@@ -21,6 +21,8 @@ export interface SessionUser {
   name: string;
   email: string | null;
   role: AppRole;
+  organizationId: string | null;
+  preferredLanguage: string;
   officeLabel?: string;
 }
 
@@ -32,6 +34,7 @@ interface SessionValue {
   profileState: ProfileState;
   isLoading: boolean;
   refreshProfile: (authUser?: User) => Promise<SessionUser | null>;
+  updatePreferredLanguage: (language: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -45,6 +48,8 @@ function profileToSessionUser(
     name: profile.full_name || profile.email || "Account holder",
     email: profile.email,
     role: profile.role,
+    organizationId: profile.organization_id,
+    preferredLanguage: profile.preferred_language,
   };
   if (profile.designation) sessionUser.officeLabel = profile.designation;
   return sessionUser;
@@ -154,9 +159,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     applySession(null);
   }, [applySession]);
 
+  const updatePreferredLanguage = useCallback(
+    async (language: string) => {
+      if (!user) throw new Error("Sign in to save a language preference.");
+      const { error } = await supabase
+        .from("profiles")
+        .update({ preferred_language: language })
+        .eq("id", user.id);
+      if (error) throw new Error(`Unable to save language preference: ${error.message}`);
+      setUser((current) =>
+        current && current.id === user.id ? { ...current, preferredLanguage: language } : current,
+      );
+    },
+    [user],
+  );
+
   const value = useMemo<SessionValue>(
-    () => ({ session, user, profileState, isLoading, refreshProfile, signOut }),
-    [session, user, profileState, isLoading, refreshProfile, signOut],
+    () => ({
+      session,
+      user,
+      profileState,
+      isLoading,
+      refreshProfile,
+      updatePreferredLanguage,
+      signOut,
+    }),
+    [session, user, profileState, isLoading, refreshProfile, updatePreferredLanguage, signOut],
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

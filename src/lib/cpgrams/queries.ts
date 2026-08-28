@@ -5,6 +5,7 @@ import {
   getAuthorizedGrievancePage,
   getAuthorizedGrievances,
   getCitizenGrievances,
+  getCitizenReminderStatus,
   getGrievanceWorkspace,
   getIssueClusters,
   getIntakeTaxonomy,
@@ -20,10 +21,12 @@ export const cpgramsQueryKeys = {
   profile: (userId: string) => ["cpgrams", "profile", userId] as const,
   citizenGrievances: (userId: string) => ["cpgrams", "citizen-grievances", userId] as const,
   authorizedGrievances: ["cpgrams", "authorized-grievances"] as const,
+  authorizedGrievancePages: ["cpgrams", "authorized-grievance-page"] as const,
   authorizedGrievancePage: (filters: OfficerQueueFilters) =>
     ["cpgrams", "authorized-grievance-page", filters] as const,
   grievance: (id: string) => ["cpgrams", "grievance", id] as const,
   notifications: (userId: string) => ["cpgrams", "notifications", userId] as const,
+  citizenReminderStatus: (id: string) => ["cpgrams", "citizen-reminder-status", id] as const,
   authorizedAppeals: ["cpgrams", "authorized-appeals"] as const,
   appeal: (id: string) => ["cpgrams", "appeal", id] as const,
   issueClusters: ["cpgrams", "issue-clusters"] as const,
@@ -68,6 +71,14 @@ export function useGrievanceWorkspaceQuery(id: string) {
   return useQuery({
     queryKey: cpgramsQueryKeys.grievance(id),
     queryFn: () => getGrievanceWorkspace(id),
+  });
+}
+
+export function useCitizenReminderStatusQuery(id: string, enabled = true) {
+  return useQuery({
+    queryKey: cpgramsQueryKeys.citizenReminderStatus(id),
+    queryFn: () => getCitizenReminderStatus(id),
+    enabled,
   });
 }
 

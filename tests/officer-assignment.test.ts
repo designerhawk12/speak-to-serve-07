@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import {
   assignmentDistribution,
+  authorizedTransferOrganizationIds,
   authorizedOrganizationIds,
   chooseEligibleGro,
   isEligibleGro,
@@ -77,5 +78,24 @@ describe("officer scope and queue pagination", () => {
     expect(queueRange(1, 25)).toEqual({ page: 1, pageSize: 25, from: 0, to: 24 });
     expect(queueRange(3, 25)).toEqual({ page: 3, pageSize: 25, from: 50, to: 74 });
     expect(queueRange(0, 500)).toEqual({ page: 1, pageSize: 100, from: 0, to: 99 });
+  });
+
+  test("mirrors server transfer destinations without treating a Nodal role as a destination", () => {
+    const organizations = [
+      { id: "root-a", parent_id: null, is_active: true, is_appellate_office: false },
+      { id: "source", parent_id: "root-a", is_active: true, is_appellate_office: false },
+      { id: "sibling", parent_id: "root-a", is_active: true, is_appellate_office: false },
+      { id: "child", parent_id: "source", is_active: true, is_appellate_office: false },
+      { id: "inactive", parent_id: "root-a", is_active: false, is_appellate_office: false },
+      { id: "appeal", parent_id: "root-a", is_active: true, is_appellate_office: true },
+      { id: "root-b", parent_id: null, is_active: true, is_appellate_office: false },
+    ];
+
+    expect(
+      [...authorizedTransferOrganizationIds(organizations, "gro", "source", "source")].sort(),
+    ).toEqual(["child", "root-a", "sibling"]);
+    expect(
+      [...authorizedTransferOrganizationIds(organizations, "nodal", "source", "source")].sort(),
+    ).toEqual(["child"]);
   });
 });

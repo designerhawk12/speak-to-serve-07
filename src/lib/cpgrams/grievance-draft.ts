@@ -70,6 +70,39 @@ export function confirmManualDestination(draft: NewGrievanceDraft): NewGrievance
   return { ...draft, destinationConfirmed: true, currentStep: 6 };
 }
 
+/**
+ * Applies citizen corrections to advisory interpretation fields only. The
+ * original statement remains authoritative and is deliberately never changed.
+ */
+export function correctInterpretedProblem(
+  draft: NewGrievanceDraft,
+  corrections: Partial<GrievanceInterpretation>,
+): NewGrievanceDraft {
+  if (!draft.interpretation) return draft;
+  const interpretation = { ...draft.interpretation, ...corrections };
+  const missingRecommended = interpretation.missing_recommended.filter(
+    (item) =>
+      !(corrections.detected_location !== undefined && item === "Where the problem happened") &&
+      !(corrections.requested_outcome !== undefined && item === "What would count as resolution"),
+  );
+  return {
+    ...draft,
+    interpretation: { ...interpretation, missing_recommended: missingRecommended },
+    location:
+      corrections.detected_location === undefined
+        ? draft.location
+        : (corrections.detected_location ?? ""),
+    identifiers:
+      corrections.detected_identifiers === undefined
+        ? draft.identifiers
+        : corrections.detected_identifiers,
+    requestedOutcome:
+      corrections.requested_outcome === undefined
+        ? draft.requestedOutcome
+        : (corrections.requested_outcome ?? ""),
+  };
+}
+
 export function saveNewGrievanceDraft(userId: string, draft: NewGrievanceDraft): void {
   if (typeof window !== "undefined") window.localStorage.setItem(newGrievanceDraftKey(userId), JSON.stringify(draft));
 }

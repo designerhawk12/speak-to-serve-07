@@ -92,4 +92,20 @@ describe("supervisor presentation metrics", () => {
     expect(metrics.appealRate).toBe(100);
     expect(metrics.geography).toBe("Pune");
   });
+
+  test("does not count terminal historical cases in active critical/high totals", () => {
+    const terminal = grievance("terminal", {
+      administrative_state: "RESOLUTION_PROVIDED",
+      government_response_completed_at: "2026-08-23T12:00:00.000Z",
+    });
+    const analytics = analyticsData();
+    analytics.collection.grievances.push(terminal);
+    analytics.collection.prioritiesByGrievance.terminal = {
+      priority_level: "CRITICAL",
+      priority_score: 100,
+    } as never;
+
+    const metrics = calculateSupervisorMetrics(analytics, undefined, now);
+    expect(metrics.criticalCaseCount).toBe(0);
+  });
 });

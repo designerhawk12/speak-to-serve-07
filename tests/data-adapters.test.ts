@@ -1,6 +1,16 @@
 import { describe, expect, test } from "bun:test";
-import { toAdminStatus, toCitizenOutcome, toGrievanceSummary } from "../src/lib/cpgrams/data-adapters";
-import type { DocumentRequestRow, GrievanceRow } from "../src/lib/cpgrams/data-access";
+import {
+  toAdminStatus,
+  toCitizenOutcome,
+  toGrievanceSummary,
+  toTimelineEvent,
+  toTimelineEventForViewer,
+} from "../src/lib/cpgrams/data-adapters";
+import type {
+  CaseEventRow,
+  DocumentRequestRow,
+  GrievanceRow,
+} from "../src/lib/cpgrams/data-access";
 
 const streetlight = {
   id: "73788a69-4ab7-4eec-aa56-4d533c335e31",
@@ -13,6 +23,7 @@ const streetlight = {
   submitted_at: "2026-08-13T00:00:00.000Z",
   created_at: "2026-08-13T00:00:00.000Z",
   updated_at: "2026-08-20T00:00:00.000Z",
+  government_response_completed_at: "2026-08-20T00:00:00.000Z",
   sla_due_at: "2026-08-28T00:00:00.000Z",
   organization_id: "organization-id",
 } as GrievanceRow;
@@ -40,5 +51,25 @@ describe("Supabase row adapters", () => {
     } as DocumentRequestRow;
     const summary = toGrievanceSummary(streetlight, undefined, [], [request]);
     expect(summary.actionRequired).toBe(request.reason);
+  });
+
+  test("stops the original SLA at the persisted government-response completion time", () => {
+    const summary = toGrievanceSummary(streetlight, undefined);
+    expect(summary.sla?.state).toBe("completed");
+    expect(summary.sla?.label).toBe("Government processing ended after 7 days");
+    expect(summary.sla?.dueLabel).toContain("Completed");
+  });
+
+  test("uses actor language for the current viewer persona", () => {
+    const citizenEvent = {
+      id: "event-1",
+      grievance_id: streetlight.id,
+      actor_type: "citizen",
+      event_type: "CITIZEN_CONFIRMED_RESOLVED",
+      title: "Citizen confirmed the issue is resolved",
+      created_at: "2026-08-20T00:00:00.000Z",
+    } as CaseEventRow;
+    expect(toTimelineEvent(citizenEvent).actorLabel).toBe("You");
+    expect(toTimelineEventForViewer(citizenEvent, "government").actorLabel).toBe("Citizen");
   });
 });

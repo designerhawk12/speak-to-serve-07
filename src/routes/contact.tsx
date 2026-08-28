@@ -11,12 +11,12 @@ export const Route = createFileRoute("/contact")({
       {
         name: "description",
         content:
-          "Helpline numbers, email and a message form for help with using the grievance service.",
+          "Prototype support information and safe self-service guidance for using the grievance workspace.",
       },
       { property: "og:title", content: "Contact the grievance helpdesk" },
       {
         property: "og:description",
-        content: "Helpline, email and a message form for support with the grievance service.",
+        content: "Safe self-service guidance for this demonstration interface.",
       },
     ],
   }),
@@ -73,11 +73,14 @@ function ContactPage() {
           <Card className="border-border">
             <CardContent className="p-5 md:p-6">
               <div className="space-y-4">
-                <h2 className="text-sm font-semibold">Support options in this prototype</h2>
+                <h2 className="text-sm font-semibold">
+                  Demo contact/support information not configured
+                </h2>
                 <p className="text-sm leading-relaxed text-muted-foreground">
                   A contact-message backend and official helpline directory have not been
                   configured. To avoid misrepresenting demo information as government contact data,
-                  this page does not show placeholder phone numbers or send a form.
+                  this page does not show placeholder phone numbers, email addresses, or send a
+                  contact form.
                 </p>
                 <div className="flex flex-wrap gap-2">
                   <Button asChild>

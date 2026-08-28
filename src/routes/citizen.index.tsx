@@ -42,14 +42,15 @@ function CitizenHome() {
       (casesQuery.data?.grievances ?? []).map((row) => {
         const appeals = casesQuery.data?.appealsByGrievance[row.id] ?? [];
         const requests = casesQuery.data?.requestsByGrievance[row.id] ?? [];
+        const clarifications = casesQuery.data?.clarificationsByGrievance[row.id] ?? [];
         const requestItems = requests.flatMap(
           (request) => casesQuery.data?.requestItemsByRequest[request.id] ?? [],
         );
         const category = row.category_id
           ? casesQuery.data?.categories[row.category_id]?.name
           : undefined;
-        const action = getCitizenActionState(row, requests, requestItems, appeals);
-        const actions = getCitizenActionItems(row, requests, requestItems, appeals);
+        const action = getCitizenActionState(row, requests, requestItems, appeals, clarifications);
+        const actions = getCitizenActionItems(row, requests, requestItems, appeals, clarifications);
         const summary = toGrievanceSummary(
           row,
           row.organization_id
@@ -58,6 +59,7 @@ function CitizenHome() {
           appeals,
           requests,
           category,
+          clarifications,
         );
         return {
           row,

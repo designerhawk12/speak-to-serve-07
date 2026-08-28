@@ -3,16 +3,17 @@ import { cn } from "@/lib/utils";
 import { StatusChip } from "./StatusChip";
 import {
   ADMIN_STATUS_META,
-  CITIZEN_OUTCOME_META,
   type AdminStatus,
   type CitizenOutcomeStatus,
 } from "@/lib/cpgrams/types";
+import { citizenOutcomeMetaForViewer } from "@/lib/cpgrams/resolution-lifecycle";
 
 export interface StatusExplanationCardProps {
   adminStatus: AdminStatus;
   citizenOutcome: CitizenOutcomeStatus;
   nextStep?: string;
   citizenLaneLabel?: string;
+  viewer?: "citizen" | "government";
   className?: string;
 }
 
@@ -25,10 +26,11 @@ export function StatusExplanationCard({
   citizenOutcome,
   nextStep,
   citizenLaneLabel = "What you have confirmed",
+  viewer = "citizen",
   className,
 }: StatusExplanationCardProps) {
   const admin = ADMIN_STATUS_META[adminStatus];
-  const citizen = CITIZEN_OUTCOME_META[citizenOutcome];
+  const citizen = citizenOutcomeMetaForViewer(citizenOutcome, viewer);
 
   return (
     <Card className={cn("border-border", className)}>

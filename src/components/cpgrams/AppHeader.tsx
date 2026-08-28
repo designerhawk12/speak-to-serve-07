@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { Landmark } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSession, ROLE_LABELS } from "@/lib/cpgrams/session";
+import { LanguageSelector } from "./LanguageSelector";
 
 export interface AppHeaderProps {
   /** Right-hand slot: nav, auth buttons, account menu. */
@@ -39,7 +40,10 @@ export function AppHeader({ children, secondary, className }: AppHeaderProps) {
             <span className="block text-[11px] text-muted-foreground">Resolution Workspace</span>
           </span>
         </Link>
-        <div className="flex items-center gap-2">{children}</div>
+        <div className="flex items-center gap-2">
+          <LanguageSelector />
+          {children}
+        </div>
       </div>
 
       {secondary && <div className="border-t border-border bg-surface-sunken">{secondary}</div>}

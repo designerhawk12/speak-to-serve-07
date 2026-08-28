@@ -15,9 +15,9 @@ import {
   Timeline,
 } from "@/components/cpgrams";
 import {
-  toAppealTimelineEvent,
+  toAppealTimelineEventForViewer,
   toGrievanceSummary,
-  toTimelineEvent,
+  toTimelineEventForViewer,
 } from "@/lib/cpgrams/data-adapters";
 import { queryErrorDetail, useAppealWorkspaceQuery } from "@/lib/cpgrams/queries";
 import { cpgramsQueryKeys } from "@/lib/cpgrams/queries";
@@ -48,32 +48,18 @@ function OfficeAppealDetail() {
   const [reasons, setReasons] = useState("");
   const [instructions, setInstructions] = useState("");
   const [success, setSuccess] = useState("");
-  if (appealQuery.isPending) return <LoadingState variant="page" label="Loading appeal file" />;
-  if (appealQuery.isError)
-    return (
-      <ErrorState
-        detail={queryErrorDetail(appealQuery.error)}
-        onRetry={() => void appealQuery.refetch()}
-      />
-    );
-  if (!appealQuery.data)
-    return (
-      <EmptyState
-        title="Appeal not found"
-        description="This appeal does not exist or is outside your authorized appeal scope."
-      />
-    );
-  const { appeal, appealEvents, grievanceWorkspace } = appealQuery.data;
   const refresh = async () => {
+    const data = appealQuery.data;
+    if (!data) return;
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: cpgramsQueryKeys.appeal(id) }),
       queryClient.invalidateQueries({ queryKey: cpgramsQueryKeys.authorizedAppeals }),
       queryClient.invalidateQueries({
-        queryKey: cpgramsQueryKeys.grievance(grievanceWorkspace.grievance.id),
+        queryKey: cpgramsQueryKeys.grievance(data.grievanceWorkspace.grievance.id),
       }),
       queryClient.invalidateQueries({ queryKey: cpgramsQueryKeys.authorizedGrievances }),
       queryClient.invalidateQueries({
-        queryKey: cpgramsQueryKeys.notifications(grievanceWorkspace.grievance.citizen_id),
+        queryKey: cpgramsQueryKeys.notifications(data.grievanceWorkspace.grievance.citizen_id),
       }),
     ]);
   };
@@ -98,6 +84,22 @@ function OfficeAppealDetail() {
       setSuccess("Reply request sent to the responsible office.");
     },
   });
+  if (appealQuery.isPending) return <LoadingState variant="page" label="Loading appeal file" />;
+  if (appealQuery.isError)
+    return (
+      <ErrorState
+        detail={queryErrorDetail(appealQuery.error)}
+        onRetry={() => void appealQuery.refetch()}
+      />
+    );
+  if (!appealQuery.data)
+    return (
+      <EmptyState
+        title="Appeal not found"
+        description="This appeal does not exist or is outside your authorized appeal scope."
+      />
+    );
+  const { appeal, appealEvents, grievanceWorkspace } = appealQuery.data;
   const grievance = toGrievanceSummary(
     grievanceWorkspace.grievance,
     grievanceWorkspace.organization?.name,
@@ -105,8 +107,8 @@ function OfficeAppealDetail() {
     grievanceWorkspace.documentRequests,
   );
   const timeline = [
-    ...grievanceWorkspace.events.map(toTimelineEvent),
-    ...appealEvents.map(toAppealTimelineEvent),
+    ...grievanceWorkspace.events.map((event) => toTimelineEventForViewer(event, "government")),
+    ...appealEvents.map((event) => toAppealTimelineEventForViewer(event, "government")),
   ].sort(
     (left, right) => new Date(left.occurredAt).getTime() - new Date(right.occurredAt).getTime(),
   );
@@ -132,6 +134,7 @@ function OfficeAppealDetail() {
         adminStatus={grievance.adminStatus}
         citizenOutcome={grievance.citizenOutcome}
         citizenLaneLabel="Citizen confirmation"
+        viewer="government"
       />
 
       <section
@@ -161,6 +164,11 @@ function OfficeAppealDetail() {
             {currentResolution ? (
               <div className="space-y-2 rounded-md border border-border p-3">
                 <p className="text-sm font-medium">{currentResolution.action_taken}</p>
+                {currentResolution.outcome_achieved && (
+                  <p className="text-sm text-muted-foreground">
+                    Outcome achieved: {currentResolution.outcome_achieved}
+                  </p>
+                )}
                 <p className="text-sm text-muted-foreground">
                   Claimed outcome: {currentResolution.outcome_claimed}
                 </p>

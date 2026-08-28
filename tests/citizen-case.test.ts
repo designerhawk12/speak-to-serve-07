@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { getCitizenActionState, matchesCitizenDashboardFilter, requiredDocumentProgress } from "../src/lib/cpgrams/citizen-case";
-import type { AppealRow, DocumentRequestItemRow, DocumentRequestRow, GrievanceRow } from "../src/lib/cpgrams/data-access";
+import type { AppealRow, ClarificationRequestRow, DocumentRequestItemRow, DocumentRequestRow, GrievanceRow } from "../src/lib/cpgrams/data-access";
 
 const pension = {
   id: "pension-case",
@@ -27,6 +27,15 @@ describe("deterministic citizen case states", () => {
 
   test("puts the Streetlight golden scenario in resolution review state", () => {
     expect(getCitizenActionState(streetlight, [], [], []).state).toBe("review_government_resolution");
+  });
+
+  test("derives clarification only from an unresolved request for that grievance", () => {
+    const caseA = { ...pension, id: "case-a" };
+    const caseB = { ...pension, id: "case-b" };
+    const clarification = { id: "clarification-a", grievance_id: caseA.id, fulfilled_at: null, question: "Provide the payment reference" } as ClarificationRequestRow;
+    expect(getCitizenActionState(caseA, [], [], [], [clarification]).state).toBe("answer_clarification");
+    expect(getCitizenActionState(caseB, [], [], [], []).state).toBe("no_action_required");
+    expect(getCitizenActionState(caseA, [], [], [], [{ ...clarification, fulfilled_at: "2026-08-27T10:00:00Z" }]).state).toBe("no_action_required");
   });
 
   test("keeps closed and appealed dashboard filters independent", () => {

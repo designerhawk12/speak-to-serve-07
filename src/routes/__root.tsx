@@ -12,7 +12,9 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AuthProvider } from "../lib/cpgrams/session";
+import { LanguageProvider } from "../lib/cpgrams/language-context";
 import { Toaster } from "../components/ui/sonner";
+import { CitizenGuidanceAssistant } from "../components/cpgrams/CitizenGuidanceAssistant";
 
 function NotFoundComponent() {
   return (
@@ -131,9 +133,12 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-        <Outlet />
-        <Toaster />
+        <LanguageProvider>
+          {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+          <Outlet />
+          <CitizenGuidanceAssistant />
+          <Toaster />
+        </LanguageProvider>
       </AuthProvider>
     </QueryClientProvider>
   );

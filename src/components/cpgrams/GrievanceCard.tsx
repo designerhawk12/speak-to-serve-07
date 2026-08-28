@@ -6,11 +6,8 @@ import { StatusChip } from "./StatusChip";
 import { SlaIndicator } from "./SlaIndicator";
 import { PriorityIndicator } from "./PriorityIndicator";
 import type { GrievancePriorityRow } from "@/lib/cpgrams/data-access";
-import {
-  ADMIN_STATUS_META,
-  CITIZEN_OUTCOME_META,
-  type GrievanceSummary,
-} from "@/lib/cpgrams/types";
+import { ADMIN_STATUS_META, type GrievanceSummary } from "@/lib/cpgrams/types";
+import { citizenOutcomeMetaForViewer } from "@/lib/cpgrams/resolution-lifecycle";
 
 export interface GrievanceCardProps {
   grievance: GrievanceSummary;
@@ -27,14 +24,21 @@ export function GrievanceCard({
   className,
 }: GrievanceCardProps) {
   const admin = ADMIN_STATUS_META[g.adminStatus];
-  const citizen = CITIZEN_OUTCOME_META[g.citizenOutcome];
+  const citizen = citizenOutcomeMetaForViewer(
+    g.citizenOutcome,
+    variant === "citizen" ? "citizen" : "government",
+  );
 
   return (
     <Card className={cn("transition-shadow hover:shadow-raised", className)}>
       <CardContent className="space-y-4 p-5">
         <div className="flex flex-wrap items-center gap-2">
           <StatusChip lane="Government" label={admin.label} tone={admin.tone} />
-          <StatusChip lane="You" label={citizen.label} tone={citizen.tone} />
+          <StatusChip
+            lane={variant === "citizen" ? "You" : "Citizen"}
+            label={citizen.label}
+            tone={citizen.tone}
+          />
         </div>
 
         <div className="space-y-1">

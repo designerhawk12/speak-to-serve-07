@@ -94,6 +94,58 @@ export function authorizedOrganizationIds(
   return ids;
 }
 
+export interface TransferOrganization {
+  id: string;
+  parent_id: string | null;
+  is_active: boolean;
+  is_appellate_office: boolean;
+}
+
+function organizationRootId(
+  organizations: TransferOrganization[],
+  organizationId: string,
+): string | null {
+  const byId = new Map(organizations.map((organization) => [organization.id, organization]));
+  let current = byId.get(organizationId);
+  const visited = new Set<string>();
+  while (current && !visited.has(current.id)) {
+    visited.add(current.id);
+    if (!current.parent_id) return current.id;
+    current = byId.get(current.parent_id);
+  }
+  return null;
+}
+
+export function authorizedTransferOrganizationIds(
+  organizations: TransferOrganization[],
+  role: "gro" | "nodal",
+  actorOrganizationId: string | null,
+  sourceOrganizationId: string | null,
+): Set<string> {
+  if (!actorOrganizationId || !sourceOrganizationId) return new Set();
+  const candidates = organizations.filter(
+    (organization) =>
+      organization.is_active &&
+      !organization.is_appellate_office &&
+      organization.id !== sourceOrganizationId,
+  );
+
+  if (role === "nodal") {
+    const subtree = authorizedOrganizationIds(organizations, actorOrganizationId, true);
+    return new Set(
+      candidates.filter((organization) => subtree.has(organization.id)).map(({ id }) => id),
+    );
+  }
+
+  const sourceRoot = organizationRootId(organizations, sourceOrganizationId);
+  if (!sourceRoot) return new Set();
+  return new Set(
+    candidates
+      .filter((organization) => organizationRootId(organizations, organization.id) === sourceRoot)
+      .map(({ id }) => id),
+  );
+}
+
 export function queueRange(page: number, pageSize: number) {
   const boundedPageSize = Math.min(100, Math.max(10, Math.trunc(pageSize)));
   const boundedPage = Math.max(1, Math.trunc(page));

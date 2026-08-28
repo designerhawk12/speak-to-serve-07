@@ -18,8 +18,11 @@ export function TimelineEvent({
   event: TimelineEventRecord;
   isLast?: boolean;
 }) {
-  const actorType =
-    event.actorLabel === "You" ? "You" : event.actorLabel === "System" ? "System" : "Government";
+  const actorType = event.actorLabel;
+  const actorDetail =
+    event.actorRole === "officer" || event.actorRole === "nodal" || event.actorRole === "appellate"
+      ? ROLE_LABELS[event.actorRole]
+      : null;
   return (
     <li className="relative flex gap-4 pb-6 last:pb-0">
       {!isLast && <span className="absolute top-4 left-[7px] h-full w-px bg-border" aria-hidden />}
@@ -37,11 +40,9 @@ export function TimelineEvent({
         </div>
         <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
           <span className="rounded-full border border-border bg-surface-sunken px-2 py-0.5 font-semibold text-foreground">
-            {actorType}
+            {actorType.toLocaleUpperCase()}
           </span>
-          <span>
-            {actorType === "Government" ? ROLE_LABELS[event.actorRole] : event.actorLabel}
-          </span>
+          {actorDetail && <span>{actorDetail}</span>}
         </div>
         {event.description && (
           <p className="text-sm leading-relaxed text-muted-foreground">{event.description}</p>

@@ -1,13 +1,20 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, ArrowLeft, ArrowRight, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ErrorState, LoadingState, PageHeader, StatusChip } from "@/components/cpgrams";
+import {
+  EligibilityGuidanceCard,
+  ErrorState,
+  LoadingState,
+  PageHeader,
+  StatusChip,
+} from "@/components/cpgrams";
+import { classifyGrievanceEligibility } from "@/lib/cpgrams/ai-gateway";
 import type { GrievanceInterpretation } from "@/lib/cpgrams/ai-contracts";
 import { deterministicInterpretationAdapter } from "@/lib/cpgrams/deterministic-interpretation";
 import {
@@ -15,14 +22,26 @@ import {
   clearNewGrievanceDraft,
   confirmManualDestination,
   confirmSuggestedDestination,
+  correctInterpretedProblem,
   createNewGrievanceDraft,
   loadNewGrievanceDraft,
   saveNewGrievanceDraft,
   type NewGrievanceDraft,
 } from "@/lib/cpgrams/grievance-draft";
-import { submitNewGrievance } from "@/lib/cpgrams/data-access";
+import {
+  submitNewGrievance,
+  type GrievanceCategoryRow,
+  type OrganizationRow,
+} from "@/lib/cpgrams/data-access";
+import {
+  categoryIntakeOptions,
+  filterIntakeTaxonomyOptions,
+  organizationIntakeOptions,
+} from "@/lib/cpgrams/intake-taxonomy";
 import { cpgramsQueryKeys, queryErrorDetail, useIntakeTaxonomyQuery } from "@/lib/cpgrams/queries";
 import { useSession } from "@/lib/cpgrams/session";
+import { detectOriginalLanguage } from "@/lib/cpgrams/language";
+import { useLanguage } from "@/lib/cpgrams/language-context";
 
 const STEPS = [
   "Describe problem",
@@ -35,6 +54,9 @@ const STEPS = [
   "Submit",
 ] as const;
 
+const EMPTY_CATEGORIES: GrievanceCategoryRow[] = [];
+const EMPTY_ORGANIZATIONS: OrganizationRow[] = [];
+
 export const Route = createFileRoute("/citizen/grievances/new")({
   head: () => ({ meta: [{ title: "New grievance — CPGRAMS Resolution Workspace" }] }),
   component: NewGrievancePage,
@@ -42,6 +64,7 @@ export const Route = createFileRoute("/citizen/grievances/new")({
 
 function NewGrievancePage() {
   const { user } = useSession();
+  const { language } = useLanguage();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const taxonomyQuery = useIntakeTaxonomyQuery();
@@ -51,6 +74,18 @@ function NewGrievancePage() {
   const [destinationError, setDestinationError] = useState<string | null>(null);
   const restoredForUser = useRef<string | null>(null);
   const step = draft.currentStep;
+  const eligibilityQuery = useQuery({
+    queryKey: ["cpgrams", "eligibility-guidance", draft.problem, draft.requestedOutcome, language],
+    queryFn: () =>
+      classifyGrievanceEligibility({
+        text: draft.problem,
+        requestedOutcome: draft.requestedOutcome,
+        language,
+      }),
+    enabled: step === 7 && draft.problem.trim().length >= 10,
+    staleTime: 30 * 60_000,
+    retry: false,
+  });
 
   useEffect(() => {
     if (!user) return;
@@ -64,11 +99,16 @@ function NewGrievancePage() {
     if (user && draftReady) saveNewGrievanceDraft(user.id, draft);
   }, [draft, draftReady, user?.id]);
 
-  const categories = taxonomyQuery.data?.categories ?? [];
-  const organizations = taxonomyQuery.data?.organizations ?? [];
+  const categories = taxonomyQuery.data?.categories ?? EMPTY_CATEGORIES;
+  const organizations = taxonomyQuery.data?.organizations ?? EMPTY_ORGANIZATIONS;
   const selectedCategory = categories.find((category) => category.id === draft.categoryId) ?? null;
   const selectedOrganization =
     organizations.find((organization) => organization.id === draft.organizationId) ?? null;
+  const categoryOptions = useMemo(() => categoryIntakeOptions(categories), [categories]);
+  const organizationOptions = useMemo(
+    () => organizationIntakeOptions(organizations),
+    [organizations],
+  );
   const suggestedCategory = useMemo(() => {
     const interpretation = draft.interpretation;
     if (!interpretation) return null;
@@ -100,6 +140,7 @@ function NewGrievancePage() {
         citizenId: user!.id,
         submissionKey: draft.submissionKey,
         originalText: draft.problem.trim(),
+        originalLanguage: detectOriginalLanguage(draft.problem),
         shortTitle:
           draft.interpretation?.issue ||
           draft.problem
@@ -216,7 +257,7 @@ function NewGrievancePage() {
         <CardContent className="space-y-6 p-5 md:p-6">
           {step === 1 && <DescribeStep draft={draft} setDraft={setDraft} />}
           {step === 2 && (
-            <InterpretationStep interpretation={draft.interpretation} error={interpretationError} />
+            <InterpretationStep draft={draft} setDraft={setDraft} error={interpretationError} />
           )}
           {step === 3 && <ImportantInformationStep draft={draft} setDraft={setDraft} />}
           {step === 4 && <OutcomeStep draft={draft} setDraft={setDraft} />}
@@ -226,6 +267,8 @@ function NewGrievancePage() {
               setDraft={setDraft}
               categories={categories}
               organizations={organizations}
+              categoryOptions={categoryOptions}
+              organizationOptions={organizationOptions}
               suggestedCategory={suggestedCategory}
               suggestedOrganization={suggestedOrganization}
               error={destinationError}
@@ -262,6 +305,11 @@ function NewGrievancePage() {
               draft={draft}
               category={selectedCategory?.name ?? null}
               organization={selectedOrganization?.name ?? null}
+              eligibility={eligibilityQuery.data}
+              eligibilityPending={
+                eligibilityQuery.isPending && eligibilityQuery.fetchStatus === "fetching"
+              }
+              eligibilityError={eligibilityQuery.isError}
             />
           )}
           {step === 8 && (
@@ -323,12 +371,15 @@ function DescribeStep({ draft, setDraft }: StepProps) {
 }
 
 function InterpretationStep({
-  interpretation,
+  draft,
+  setDraft,
   error,
 }: {
-  interpretation: GrievanceInterpretation | null;
+  draft: NewGrievanceDraft;
+  setDraft: Dispatch<SetStateAction<NewGrievanceDraft>>;
   error: string | null;
 }) {
+  const interpretation = draft.interpretation;
   if (!interpretation)
     return (
       <div className="space-y-3">
@@ -343,19 +394,103 @@ function InterpretationStep({
     );
   return (
     <div className="space-y-4">
-      <div>
-        <p className="text-xs font-semibold text-muted-foreground">We understood the issue as</p>
-        <h2 className="mt-1 text-lg font-semibold">{interpretation.issue}</h2>
-        <p className="mt-2 text-sm text-muted-foreground">{interpretation.structured_summary}</p>
+      <div className="rounded-md border border-info/35 bg-info-surface p-3 text-sm">
+        <p className="font-semibold">Deterministic development suggestion</p>
+        <p className="mt-1 text-muted-foreground">
+          This is a local rules-based summary, not an AI decision or a confirmed government
+          destination. Review and correct it before choosing a destination.
+        </p>
+      </div>
+      <ReviewItem label="Original description" value={draft.problem} />
+      <div className="space-y-2">
+        <Label htmlFor="interpreted-issue">Interpreted issue</Label>
+        <Input
+          id="interpreted-issue"
+          value={interpretation.issue}
+          onChange={(event) =>
+            setDraft((current) => correctInterpretedProblem(current, { issue: event.target.value }))
+          }
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="structured-summary">Interpreted/structured issue</Label>
+        <Textarea
+          id="structured-summary"
+          rows={4}
+          value={interpretation.structured_summary}
+          onChange={(event) =>
+            setDraft((current) =>
+              correctInterpretedProblem(current, { structured_summary: event.target.value }),
+            )
+          }
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="review-outcome">Requested outcome</Label>
+        <Textarea
+          id="review-outcome"
+          rows={3}
+          value={draft.requestedOutcome}
+          onChange={(event) =>
+            setDraft((current) =>
+              correctInterpretedProblem(current, { requested_outcome: event.target.value }),
+            )
+          }
+          placeholder="What would count as resolution?"
+        />
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-2">
+          <Label htmlFor="review-location">Detected location</Label>
+          <Input
+            id="review-location"
+            value={draft.location}
+            onChange={(event) =>
+              setDraft((current) =>
+                correctInterpretedProblem(current, { detected_location: event.target.value }),
+              )
+            }
+            placeholder="No location detected"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="review-identifiers">Detected identifiers</Label>
+          <Input
+            id="review-identifiers"
+            value={draft.identifiers.join(", ")}
+            onChange={(event) =>
+              setDraft((current) =>
+                correctInterpretedProblem(current, {
+                  detected_identifiers: event.target.value
+                    .split(",")
+                    .map((item) => item.trim())
+                    .filter(Boolean),
+                }),
+              )
+            }
+            placeholder="No identifiers detected"
+          />
+        </div>
+      </div>
+      <div className="rounded-md border border-border p-3 text-sm">
+        <p className="text-xs font-semibold text-muted-foreground">Suggested destination</p>
+        <p className="mt-1 font-medium">
+          {interpretation.suggested_organization ?? "No destination suggestion is available"}
+        </p>
+        <p className="mt-1 text-muted-foreground">
+          {interpretation.suggested_category ?? "No category suggestion is available"}
+          {interpretation.suggested_subcategory ? ` › ${interpretation.suggested_subcategory}` : ""}
+        </p>
+        <p className="mt-2 text-xs text-muted-foreground">
+          Confirm or change this in the next destination step. It will not be submitted until you
+          explicitly confirm it.
+        </p>
       </div>
       <div className="flex flex-wrap gap-2">
         <StatusChip
-          label={`${Math.round(interpretation.confidence * 100)}% confidence`}
+          label={`${Math.round(interpretation.confidence * 100)}% cue match`}
           tone="info"
         />
-        {interpretation.detected_location && (
-          <StatusChip label={interpretation.detected_location} tone="neutral" />
-        )}
       </div>
       {interpretation.missing_recommended.length > 0 && (
         <div className="rounded-md border border-warning/35 bg-warning-surface p-3 text-sm">
@@ -450,6 +585,8 @@ function DestinationStep({
   setDraft,
   categories,
   organizations,
+  categoryOptions,
+  organizationOptions,
   suggestedCategory,
   suggestedOrganization,
   error,
@@ -458,14 +595,33 @@ function DestinationStep({
 }: {
   draft: NewGrievanceDraft;
   setDraft: Dispatch<SetStateAction<NewGrievanceDraft>>;
-  categories: { id: string; name: string }[];
-  organizations: { id: string; name: string }[];
+  categories: {
+    id: string;
+    name: string;
+    parent_id: string | null;
+    code: string;
+    plain_language_hint: string | null;
+  }[];
+  organizations: {
+    id: string;
+    name: string;
+    parent_id: string | null;
+    code: string;
+    level: string;
+    state_name: string | null;
+  }[];
+  categoryOptions: { id: string; label: string; searchText: string }[];
+  organizationOptions: { id: string; label: string; searchText: string }[];
   suggestedCategory: { id: string; name: string } | null;
   suggestedOrganization: { id: string; name: string } | null;
   error: string | null;
   onConfirmSuggested: () => void;
   onConfirmManual: () => void;
 }) {
+  const [categorySearch, setCategorySearch] = useState("");
+  const [organizationSearch, setOrganizationSearch] = useState("");
+  const visibleCategories = filterIntakeTaxonomyOptions(categoryOptions, categorySearch);
+  const visibleOrganizations = filterIntakeTaxonomyOptions(organizationOptions, organizationSearch);
   return (
     <div className="space-y-5">
       <div className="rounded-lg border border-primary/25 bg-accent p-4">
@@ -504,6 +660,13 @@ function DestinationStep({
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="category">Category</Label>
+            <Input
+              id="category-search"
+              value={categorySearch}
+              onChange={(event) => setCategorySearch(event.target.value)}
+              placeholder="Search active categories"
+              aria-label="Search active categories"
+            />
             <select
               id="category"
               value={draft.categoryId ?? ""}
@@ -517,15 +680,25 @@ function DestinationStep({
               className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
             >
               <option value="">Choose a category</option>
-              {categories.map((category) => (
+              {visibleCategories.map((category) => (
                 <option key={category.id} value={category.id}>
-                  {category.name}
+                  {category.label}
                 </option>
               ))}
             </select>
+            <p className="text-xs text-muted-foreground">
+              {visibleCategories.length} of {categories.length} active database categories shown.
+            </p>
           </div>
           <div className="space-y-2">
             <Label htmlFor="organization">Organization</Label>
+            <Input
+              id="organization-search"
+              value={organizationSearch}
+              onChange={(event) => setOrganizationSearch(event.target.value)}
+              placeholder="Search active organizations"
+              aria-label="Search active organizations"
+            />
             <select
               id="organization"
               value={draft.organizationId ?? ""}
@@ -539,12 +712,16 @@ function DestinationStep({
               className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
             >
               <option value="">Choose an organization</option>
-              {organizations.map((organization) => (
+              {visibleOrganizations.map((organization) => (
                 <option key={organization.id} value={organization.id}>
-                  {organization.name}
+                  {organization.label}
                 </option>
               ))}
             </select>
+            <p className="text-xs text-muted-foreground">
+              {visibleOrganizations.length} of {organizations.length} active database organizations
+              shown.
+            </p>
           </div>
           <div className="sm:col-span-2">
             <Button size="sm" onClick={onConfirmManual}>
@@ -594,10 +771,16 @@ function FinalReviewStep({
   draft,
   category,
   organization,
+  eligibility,
+  eligibilityPending,
+  eligibilityError,
 }: {
   draft: NewGrievanceDraft;
   category: string | null;
   organization: string | null;
+  eligibility: Awaited<ReturnType<typeof classifyGrievanceEligibility>> | undefined;
+  eligibilityPending: boolean;
+  eligibilityError: boolean;
 }) {
   return (
     <div className="space-y-4">
@@ -607,6 +790,11 @@ function FinalReviewStep({
       <ReviewItem label="Location" value={draft.location || "Not provided"} />
       <ReviewItem label="Destination" value={organization ?? "To be routed"} />
       <ReviewItem label="Category" value={category ?? "To be categorized"} />
+      <EligibilityGuidanceCard
+        result={eligibility}
+        pending={eligibilityPending}
+        error={eligibilityError}
+      />
     </div>
   );
 }
@@ -659,11 +847,14 @@ function suggestCategoryId(
   categories: { id: string; name: string }[],
 ) {
   return (
+    interpretation.suggested_subcategory_id ??
+    interpretation.suggested_category_id ??
     categories.find(
       (category) =>
         category.name ===
         (interpretation.suggested_subcategory ?? interpretation.suggested_category),
-    )?.id ?? null
+    )?.id ??
+    null
   );
 }
 function suggestOrganizationId(

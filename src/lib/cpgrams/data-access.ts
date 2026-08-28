@@ -17,6 +17,7 @@ export type CaseEventRow = TableRow<"case_events">;
 export type DocumentRow = TableRow<"documents">;
 export type DocumentRequestRow = TableRow<"document_requests">;
 export type DocumentRequestItemRow = TableRow<"document_request_items">;
+export type ClarificationRequestRow = TableRow<"clarification_requests">;
 export type MessageRow = TableRow<"messages">;
 export type ResolutionRow = TableRow<"resolutions">;
 export type FeedbackRow = TableRow<"feedback">;
@@ -41,6 +42,7 @@ export interface GrievanceCollection {
   appealsByGrievance: Record<string, AppealRow[]>;
   requestsByGrievance: Record<string, DocumentRequestRow[]>;
   requestItemsByRequest: Record<string, DocumentRequestItemRow[]>;
+  clarificationsByGrievance: Record<string, ClarificationRequestRow[]>;
   prioritiesByGrievance: Record<string, GrievancePriorityRow>;
 }
 
@@ -74,6 +76,7 @@ export interface GrievanceWorkspace {
   documents: DocumentRow[];
   documentRequests: DocumentRequestRow[];
   documentRequestItems: DocumentRequestItemRow[];
+  clarificationRequests: ClarificationRequestRow[];
   messages: MessageRow[];
   resolutions: ResolutionRow[];
   feedback: FeedbackRow[];
@@ -170,28 +173,41 @@ async function enrichGrievances(grievances: GrievanceRow[]): Promise<GrievanceCo
       appealsByGrievance: {},
       requestsByGrievance: {},
       requestItemsByRequest: {},
+      clarificationsByGrievance: {},
       prioritiesByGrievance: {},
     };
   }
 
-  const [organizations, categories, appealsResult, requestsResult, prioritiesResult] =
-    await Promise.all([
-      organizationsPromise,
-      categoriesPromise,
-      supabase
-        .from("appeals")
-        .select("*")
-        .in("grievance_id", grievanceIds)
-        .order("filed_at", { ascending: false }),
-      supabase
-        .from("document_requests")
-        .select("*")
-        .in("grievance_id", grievanceIds)
-        .order("created_at", { ascending: false }),
-      supabase.from("grievance_priorities").select("*").in("grievance_id", grievanceIds),
-    ]);
+  const [
+    organizations,
+    categories,
+    appealsResult,
+    requestsResult,
+    clarificationsResult,
+    prioritiesResult,
+  ] = await Promise.all([
+    organizationsPromise,
+    categoriesPromise,
+    supabase
+      .from("appeals")
+      .select("*")
+      .in("grievance_id", grievanceIds)
+      .order("filed_at", { ascending: false }),
+    supabase
+      .from("document_requests")
+      .select("*")
+      .in("grievance_id", grievanceIds)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("clarification_requests")
+      .select("*")
+      .in("grievance_id", grievanceIds)
+      .order("requested_at", { ascending: false }),
+    supabase.from("grievance_priorities").select("*").in("grievance_id", grievanceIds),
+  ]);
   throwIfError(appealsResult.error, "Unable to load grievance appeals");
   throwIfError(requestsResult.error, "Unable to load document requests");
+  throwIfError(clarificationsResult.error, "Unable to load clarification requests");
   throwIfError(prioritiesResult.error, "Unable to load grievance priorities");
   const requestIds = (requestsResult.data ?? []).map((request) => request.id);
   let requestItems: DocumentRequestItemRow[] = [];
@@ -212,6 +228,7 @@ async function enrichGrievances(grievances: GrievanceRow[]): Promise<GrievanceCo
     appealsByGrievance: groupBy(appealsResult.data ?? [], (row) => row.grievance_id),
     requestsByGrievance: groupBy(requestsResult.data ?? [], (row) => row.grievance_id),
     requestItemsByRequest: groupBy(requestItems, (row) => row.request_id),
+    clarificationsByGrievance: groupBy(clarificationsResult.data ?? [], (row) => row.grievance_id),
     prioritiesByGrievance: indexBy(prioritiesResult.data ?? [], (row) => row.grievance_id),
   };
 }
@@ -228,13 +245,44 @@ export async function getProfile(userId: string): Promise<ProfileRow | null> {
 
 /** Public reference taxonomy used only after a citizen has described the issue. */
 export async function getIntakeTaxonomy(): Promise<IntakeTaxonomy> {
+  const pageSize = 500;
+  async function loadAllActiveOrganizations(): Promise<OrganizationRow[]> {
+    const records: OrganizationRow[] = [];
+    for (let from = 0; ; from += pageSize) {
+      const { data, error } = await supabase
+        .from("organizations")
+        .select("*")
+        .eq("is_active", true)
+        .order("name")
+        .order("id")
+        .range(from, from + pageSize - 1);
+      throwIfError(error, "Unable to load government organizations");
+      records.push(...(data ?? []));
+      if ((data?.length ?? 0) < pageSize) return records;
+    }
+  }
+
+  async function loadAllActiveCategories(): Promise<GrievanceCategoryRow[]> {
+    const records: GrievanceCategoryRow[] = [];
+    for (let from = 0; ; from += pageSize) {
+      const { data, error } = await supabase
+        .from("grievance_categories")
+        .select("*")
+        .eq("is_active", true)
+        .order("name")
+        .order("id")
+        .range(from, from + pageSize - 1);
+      throwIfError(error, "Unable to load grievance categories");
+      records.push(...(data ?? []));
+      if ((data?.length ?? 0) < pageSize) return records;
+    }
+  }
+
   const [organizations, categories] = await Promise.all([
-    supabase.from("organizations").select("*").order("name"),
-    supabase.from("grievance_categories").select("*").eq("is_active", true).order("name"),
+    loadAllActiveOrganizations(),
+    loadAllActiveCategories(),
   ]);
-  throwIfError(organizations.error, "Unable to load government organizations");
-  throwIfError(categories.error, "Unable to load grievance categories");
-  return { organizations: organizations.data ?? [], categories: categories.data ?? [] };
+  return { organizations, categories };
 }
 
 export interface SubmitNewGrievanceInput {
@@ -247,6 +295,7 @@ export interface SubmitNewGrievanceInput {
   categoryId: string | null;
   organizationId: string | null;
   location: string;
+  originalLanguage: string;
   categorySlaDays?: number;
 }
 
@@ -264,6 +313,7 @@ export async function submitNewGrievance(input: SubmitNewGrievanceInput): Promis
     citizen_id: input.citizenId,
     submission_key: input.submissionKey,
     original_text: input.originalText,
+    original_language: input.originalLanguage,
     short_title: input.shortTitle,
     requested_outcome: input.requestedOutcome || null,
     urgency: input.urgency,
@@ -406,6 +456,7 @@ export async function getGrievanceWorkspace(
     events,
     documents,
     requests,
+    clarifications,
     messages,
     resolutions,
     feedback,
@@ -429,6 +480,11 @@ export async function getGrievanceWorkspace(
       .select("*")
       .eq("grievance_id", grievanceId)
       .order("created_at", { ascending: false }),
+    supabase
+      .from("clarification_requests")
+      .select("*")
+      .eq("grievance_id", grievanceId)
+      .order("requested_at", { ascending: false }),
     supabase
       .from("messages")
       .select("*")
@@ -454,6 +510,7 @@ export async function getGrievanceWorkspace(
   throwIfError(events.error, "Unable to load case events");
   throwIfError(documents.error, "Unable to load documents");
   throwIfError(requests.error, "Unable to load document requests");
+  throwIfError(clarifications.error, "Unable to load clarification requests");
   throwIfError(messages.error, "Unable to load messages");
   throwIfError(resolutions.error, "Unable to load resolutions");
   throwIfError(feedback.error, "Unable to load feedback");
@@ -481,9 +538,10 @@ export async function getGrievanceWorkspace(
       ? (categories[grievanceResult.data.category_id] ?? null)
       : null,
     events: events.data ?? [],
-    documents: documents.data ?? [],
+    documents: uniqueDocuments(documents.data ?? []),
     documentRequests: requests.data ?? [],
     documentRequestItems,
+    clarificationRequests: clarifications.data ?? [],
     messages: messages.data ?? [],
     resolutions: resolutions.data ?? [],
     feedback: feedback.data ?? [],
@@ -508,117 +566,92 @@ export interface CitizenDocumentUploadInput {
   userId: string;
   file: File;
   requestItemId?: string;
+  docKind?: string;
+  /** Reuse this key when retrying the same user action. Request items use their
+   * stable ID automatically, so rapid clicks and interrupted retries converge. */
+  uploadIdempotencyKey?: string;
+}
+
+export function storageObjectAlreadyExists(
+  error: {
+    message?: string | undefined;
+    error?: string | undefined;
+    statusCode?: string | number | undefined;
+    status?: number | undefined;
+  } | null,
+): boolean {
+  if (!error) return false;
+  return (
+    error.statusCode === 409 ||
+    error.status === 409 ||
+    /already exists|already_exists|resourcealreadyexists/i.test(
+      `${error.error ?? ""} ${error.message ?? ""}`,
+    )
+  );
+}
+
+export function uniqueDocuments(documents: DocumentRow[]): DocumentRow[] {
+  const seen = new Set<string>();
+  return documents.filter((document) => {
+    if (seen.has(document.id)) return false;
+    seen.add(document.id);
+    return true;
+  });
 }
 
 /**
- * Uploads a new, immutable object to the signed-in citizen's folder, then records
- * its metadata in the RLS-protected documents table. No service-role access or
- * Storage upsert is used.
+ * Uploads a private object under a stable action key, then atomically records the
+ * metadata, requested-item relation, completion state, and immutable event. No
+ * service-role access or Storage overwrite is used.
  */
 export async function uploadCitizenDocument({
   grievanceId,
   userId,
   file,
   requestItemId,
+  docKind,
+  uploadIdempotencyKey,
 }: CitizenDocumentUploadInput): Promise<DocumentRow> {
   if (file.size === 0) throw new Error("Choose a non-empty file to upload.");
   if (file.size > 6 * 1024 * 1024)
     throw new Error("Files larger than 6 MB are not supported in this upload flow.");
 
   const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-120) || "document";
-  const storagePath = `${userId}/${grievanceId}/${crypto.randomUUID()}-${safeName}`;
+  const idempotencyKey = requestItemId ?? uploadIdempotencyKey ?? crypto.randomUUID();
+  const storagePath = `${userId}/${grievanceId}/${idempotencyKey}-${safeName}`;
   const uploadOptions = { upsert: false, ...(file.type ? { contentType: file.type } : {}) };
   const { data: storageData, error: storageError } = await supabase.storage
     .from("grievance-documents")
     .upload(storagePath, file, uploadOptions);
-  throwIfError(storageError, "Unable to upload file");
-  if (!storageData) throw new Error("Unable to upload file: Storage did not return a path.");
+  if (storageError && !storageObjectAlreadyExists(storageError)) {
+    throwIfError(storageError, "Unable to upload file");
+  }
+  const persistedPath = storageData?.path ?? storagePath;
+
+  const { data: documentId, error: finalizeError } = await supabase.rpc(
+    "citizen_finalize_document_upload",
+    {
+      p_grievance_id: grievanceId,
+      p_storage_path: persistedPath,
+      p_file_name: file.name,
+      p_mime_type: file.type || "",
+      p_size_bytes: file.size,
+      p_upload_idempotency_key: idempotencyKey,
+      ...(requestItemId ? { p_request_item_id: requestItemId } : {}),
+      p_doc_kind: docKind ?? "citizen_evidence",
+    },
+  );
+  throwIfError(finalizeError, "Unable to record uploaded document");
+  if (!documentId)
+    throw new Error("Unable to record uploaded document: no document ID was returned.");
 
   const { data: document, error: documentError } = await supabase
     .from("documents")
-    .insert({
-      grievance_id: grievanceId,
-      uploaded_by: userId,
-      storage_path: storageData.path,
-      file_name: file.name,
-      mime_type: file.type || null,
-      size_bytes: file.size,
-      doc_kind: requestItemId ? "requested_evidence" : "citizen_evidence",
-      citizen_visible: true,
-    })
     .select("*")
+    .eq("id", documentId)
     .single();
-
-  if (documentError || !document) {
-    await supabase.storage.from("grievance-documents").remove([storageData.path]);
-    throw new Error(
-      `Unable to record uploaded document: ${documentError?.message ?? "No document row returned"}`,
-    );
-  }
-
-  if (requestItemId) {
-    const { data: updatedItem, error: itemError } = await supabase
-      .from("document_request_items")
-      .update({ document_id: document.id })
-      .eq("id", requestItemId)
-      .select("id")
-      .maybeSingle();
-    if (itemError || !updatedItem) {
-      await Promise.all([
-        supabase.from("documents").delete().eq("id", document.id),
-        supabase.storage.from("grievance-documents").remove([storageData.path]),
-      ]);
-      throw new Error(
-        `Unable to attach document to the request: ${itemError?.message ?? "The request item is no longer available."}`,
-      );
-    }
-
-    const { data: item, error: requestItemError } = await supabase
-      .from("document_request_items")
-      .select("request_id")
-      .eq("id", requestItemId)
-      .single();
-    throwIfError(requestItemError, "Unable to check document request progress");
-    if (!item)
-      throw new Error("Unable to check document request progress: request item was not returned.");
-    const { data: requestItems, error: requestItemsError } = await supabase
-      .from("document_request_items")
-      .select("is_required, document_id")
-      .eq("request_id", item.request_id);
-    throwIfError(requestItemsError, "Unable to check required documents");
-    if (
-      (requestItems ?? []).filter((entry) => entry.is_required).every((entry) => entry.document_id)
-    ) {
-      const { data: completedRequest, error: requestError } = await supabase
-        .from("document_requests")
-        .update({ fulfilled_at: new Date().toISOString() })
-        .eq("id", item.request_id)
-        .select("id")
-        .maybeSingle();
-      throwIfError(requestError, "Unable to mark document request complete");
-      if (!completedRequest)
-        throw new Error(
-          "Unable to mark document request complete: request is no longer available.",
-        );
-    }
-  }
-
-  const { error: eventError } = await supabase.from("case_events").insert({
-    grievance_id: grievanceId,
-    actor_id: userId,
-    actor_type: "citizen",
-    event_type: "DOCUMENT_UPLOADED",
-    title: requestItemId
-      ? "Citizen uploaded a requested document"
-      : "Citizen uploaded supporting evidence",
-    description: file.name,
-    citizen_visible: true,
-  });
-  if (eventError)
-    throw new Error(
-      `Document uploaded, but the case history could not be updated: ${eventError.message}`,
-    );
-
+  throwIfError(documentError, "Unable to load the recorded document");
+  if (!document) throw new Error("Unable to load the recorded document.");
   return document;
 }
 
@@ -660,6 +693,73 @@ export async function requestOfficerClarification(
   throwIfError(error, "Unable to request clarification");
 }
 
+export async function respondToCitizenClarification(input: {
+  clarificationRequestId: string;
+  response: string;
+  documentId?: string;
+}): Promise<void> {
+  const { error } = await supabase.rpc("citizen_respond_to_clarification", {
+    p_clarification_request_id: input.clarificationRequestId,
+    p_response: input.response,
+    ...(input.documentId ? { p_document_id: input.documentId } : {}),
+  });
+  throwIfError(error, "Unable to save your clarification response");
+}
+
+export interface CitizenReminderStatus {
+  eligible: boolean;
+  waitingOnCitizen: boolean;
+  lastReminderAt: string | null;
+  nextReminderAt: string | null;
+  recentReminderCount: number;
+  priorityContribution: number;
+  priorityContributionCap: number;
+  reason: string | null;
+}
+
+function parseCitizenReminderStatus(value: unknown): CitizenReminderStatus {
+  const record = (value && typeof value === "object" ? value : {}) as Record<string, unknown>;
+  return {
+    eligible: record["eligible"] === true,
+    waitingOnCitizen: record["waiting_on_citizen"] === true,
+    lastReminderAt:
+      typeof record["last_reminder_at"] === "string" ? record["last_reminder_at"] : null,
+    nextReminderAt:
+      typeof record["next_reminder_at"] === "string" ? record["next_reminder_at"] : null,
+    recentReminderCount:
+      typeof record["recent_reminder_count"] === "number" ? record["recent_reminder_count"] : 0,
+    priorityContribution:
+      typeof record["priority_contribution"] === "number" ? record["priority_contribution"] : 0,
+    priorityContributionCap:
+      typeof record["priority_contribution_cap"] === "number"
+        ? record["priority_contribution_cap"]
+        : 0,
+    reason: typeof record["reason"] === "string" ? record["reason"] : null,
+  };
+}
+
+export async function getCitizenReminderStatus(
+  grievanceId: string,
+): Promise<CitizenReminderStatus> {
+  const { data, error } = await supabase.rpc("citizen_reminder_status", {
+    p_grievance_id: grievanceId,
+  });
+  throwIfError(error, "Unable to check reminder availability");
+  return parseCitizenReminderStatus(data);
+}
+
+export async function sendCitizenReminder(
+  grievanceId: string,
+  message: string,
+): Promise<CitizenReminderStatus> {
+  const { data, error } = await supabase.rpc("citizen_send_reminder", {
+    p_grievance_id: grievanceId,
+    p_message: message,
+  });
+  throwIfError(error, "Unable to send reminder");
+  return parseCitizenReminderStatus(data);
+}
+
 export async function addOfficerInterimUpdate(input: {
   grievanceId: string;
   actionCompleted: string;
@@ -690,6 +790,19 @@ export async function transferOfficerGrievance(input: {
     p_reason: input.reason,
   });
   throwIfError(error, "Unable to transfer grievance");
+}
+
+export async function flagOfficerWrongRoute(input: {
+  grievanceId: string;
+  reason: string;
+}): Promise<string> {
+  const { data, error } = await supabase.rpc("officer_flag_wrong_route", {
+    p_grievance_id: input.grievanceId,
+    p_reason: input.reason,
+  });
+  throwIfError(error, "Unable to flag grievance for transfer");
+  if (!data) throw new Error("Unable to flag grievance for transfer: deadline was not returned.");
+  return data;
 }
 
 export async function submitOfficerResolution(input: {

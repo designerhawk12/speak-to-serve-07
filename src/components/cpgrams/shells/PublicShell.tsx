@@ -28,6 +28,15 @@ const FOOTER_GROUPS = [
       { to: "/auth/officer-login" as const, label: "Government Officer Login" },
     ],
   },
+  {
+    title: "Prototype policies",
+    links: [
+      { to: "/disclaimer" as const, label: "Disclaimer" },
+      { to: "/privacy" as const, label: "Privacy & website policies" },
+      { to: "/accessibility" as const, label: "Accessibility" },
+      { to: "/sitemap" as const, label: "Sitemap" },
+    ],
+  },
 ];
 
 export function PublicShell({ children }: { children: React.ReactNode }) {
@@ -44,8 +53,8 @@ export function PublicShell({ children }: { children: React.ReactNode }) {
           <div className="space-y-2">
             <p className="text-sm font-bold">CPGRAMS Resolution Workspace</p>
             <p className="text-xs leading-relaxed text-muted-foreground">
-              A redesign of India&apos;s public grievance process, built so cases explain themselves and
-              citizens confirm when a problem is actually solved.
+              A redesign of India&apos;s public grievance process, built so cases explain themselves
+              and citizens confirm when a problem is actually solved.
             </p>
           </div>
           {FOOTER_GROUPS.map((g) => (
@@ -66,9 +75,10 @@ export function PublicShell({ children }: { children: React.ReactNode }) {
             </nav>
           ))}
         </div>
-        <div className="border-t border-border">
-          <p className="page-container py-4 text-xs text-muted-foreground">
-            Demonstration interface. Not an official Government of India website.
+        <div className="border-t border-border bg-warning-surface">
+          <p className="page-container py-4 text-xs text-warning-foreground">
+            <strong>Demonstration interface — not an official Government of India website.</strong>{" "}
+            Do not use this prototype as an official service, policy, or support channel.
           </p>
         </div>
       </footer>

@@ -1,4 +1,8 @@
 export { AppHeader } from "./AppHeader";
+export { LanguageSelector } from "./LanguageSelector";
+export { TranslatedText } from "./TranslatedText";
+export { CitizenGuidanceAssistant } from "./CitizenGuidanceAssistant";
+export { EligibilityGuidanceCard } from "./EligibilityGuidanceCard";
 export { PublicNav } from "./PublicNav";
 export { CitizenNav } from "./CitizenNav";
 export { WorkspaceNav } from "./WorkspaceNav";

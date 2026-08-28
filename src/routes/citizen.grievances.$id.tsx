@@ -1,6 +1,10 @@
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   ActionRequiredCard,
   CaseJourney,
@@ -16,6 +20,7 @@ import {
   Timeline,
   PrivateDocumentCard,
   GrievanceRouteBoundary,
+  TranslatedText,
 } from "@/components/cpgrams";
 import { getCitizenActionItems, getCitizenActionState } from "@/lib/cpgrams/citizen-case";
 import {
@@ -24,9 +29,21 @@ import {
   toGrievanceSummary,
   toTimelineEvent,
 } from "@/lib/cpgrams/data-adapters";
-import { queryErrorDetail, useGrievanceWorkspaceQuery } from "@/lib/cpgrams/queries";
+import {
+  cpgramsQueryKeys,
+  queryErrorDetail,
+  useCitizenReminderStatusQuery,
+  useGrievanceWorkspaceQuery,
+} from "@/lib/cpgrams/queries";
 import { useSession } from "@/lib/cpgrams/session";
-import type { DocumentRow } from "@/lib/cpgrams/data-access";
+import {
+  respondToCitizenClarification,
+  sendCitizenReminder,
+  uniqueDocuments,
+  uploadCitizenDocument,
+  type ClarificationRequestRow,
+  type DocumentRow,
+} from "@/lib/cpgrams/data-access";
 import { isResolutionEvidence } from "@/lib/cpgrams/citizen-resolution";
 import { resolutionRouteDebug } from "@/lib/cpgrams/resolution-debug";
 import { buildCitizenCaseNarrative } from "@/lib/cpgrams/citizen-narrative";
@@ -61,6 +78,7 @@ function CitizenGrievanceRoute() {
 function CitizenGrievanceDetail() {
   const { id } = Route.useParams();
   const { user } = useSession();
+  const [clarificationSuccess, setClarificationSuccess] = useState(false);
   const caseQuery = useGrievanceWorkspaceQuery(id);
   if (caseQuery.isPending) return <LoadingState variant="page" label="Loading case details" />;
   if (caseQuery.isError)
@@ -84,52 +102,52 @@ function CitizenGrievanceDetail() {
     workspace.appeals,
     workspace.documentRequests,
     workspace.category?.name,
+    workspace.clarificationRequests,
   );
   const action = getCitizenActionState(
     workspace.grievance,
     workspace.documentRequests,
     workspace.documentRequestItems,
     workspace.appeals,
+    workspace.clarificationRequests,
   );
   const actionItems = getCitizenActionItems(
     workspace.grievance,
     workspace.documentRequests,
     workspace.documentRequestItems,
     workspace.appeals,
+    workspace.clarificationRequests,
   );
   const hasAction = (state: string) => actionItems.some((entry) => entry.state === state);
   const timeline = workspace.events.filter((event) => event.citizen_visible).map(toTimelineEvent);
+  const documents = uniqueDocuments(workspace.documents);
   const requestDocumentIds = new Set(
     workspace.documentRequestItems.map((item) => item.document_id).filter(Boolean),
   );
-  const appealDocuments = workspace.documents.filter((document) =>
-    /appeal/i.test(document.doc_kind ?? ""),
-  );
-  const requestedDocuments = workspace.documents.filter((document) =>
-    requestDocumentIds.has(document.id),
-  );
-  const citizenDocuments = workspace.documents.filter(
+  const appealDocuments = documents.filter((document) => /appeal/i.test(document.doc_kind ?? ""));
+  const appealDocumentIds = new Set(appealDocuments.map((document) => document.id));
+  const requestedDocuments = documents.filter((document) => requestDocumentIds.has(document.id));
+  const citizenDocuments = documents.filter(
     (document) =>
       document.uploaded_by === user?.id &&
-      !requestedDocuments.includes(document) &&
-      !appealDocuments.includes(document),
+      !requestDocumentIds.has(document.id) &&
+      !appealDocumentIds.has(document.id),
   );
-  const resolutionDocuments = workspace.documents.filter((document) =>
+  const resolutionDocuments = documents.filter((document) =>
     isResolutionEvidence(document, user?.id),
   );
-  const governmentDocuments = workspace.documents.filter(
+  const resolutionDocumentIds = new Set(resolutionDocuments.map((document) => document.id));
+  const governmentDocuments = documents.filter(
     (document) =>
       document.uploaded_by !== user?.id &&
-      !resolutionDocuments.includes(document) &&
-      !appealDocuments.includes(document),
+      !requestDocumentIds.has(document.id) &&
+      !resolutionDocumentIds.has(document.id) &&
+      !appealDocumentIds.has(document.id),
   );
   const openRequests = workspace.documentRequests.filter((request) => !request.fulfilled_at);
-  const clarificationRequests =
-    workspace.grievance.administrative_state === "CLARIFICATION_REQUIRED"
-      ? workspace.messages
-          .filter((message) => message.sender_type === "officer" && message.citizen_visible)
-          .slice(-1)
-      : [];
+  const clarificationRequests = workspace.clarificationRequests.filter(
+    (request) => !request.fulfilled_at,
+  );
   const narrative = buildCitizenCaseNarrative({
     grievance: workspace.grievance,
     organizationName: workspace.organization?.name,
@@ -193,11 +211,13 @@ function CitizenGrievanceDetail() {
               />
             </ActionRequiredCard>
           )}
-          {clarificationRequests.map((message) => (
-            <ActionRequiredCard
-              key={message.id}
-              title="Clarification requested"
-              description={message.body}
+          {clarificationRequests.map((request) => (
+            <CitizenClarificationResponse
+              key={request.id}
+              grievanceId={id}
+              request={request}
+              userId={user?.id}
+              onSaved={() => setClarificationSuccess(true)}
             />
           ))}
           {hasAction("answer_clarification") && clarificationRequests.length === 0 && (
@@ -245,6 +265,19 @@ function CitizenGrievanceDetail() {
           </CardContent>
         </Card>
       )}
+
+      {clarificationSuccess && (
+        <Card className="border-success/35 bg-success-surface" role="status">
+          <CardContent className="p-5">
+            <h2 className="text-sm font-semibold text-success">Government processing resumed</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Your clarification was saved and the assigned officer was notified.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {user && <CitizenReminder grievanceId={id} userId={user.id} />}
 
       <CaseJourney grievance={workspace.grievance} appeals={workspace.appeals} />
       <CaseNarrativeCard narrative={narrative} />
@@ -342,7 +375,11 @@ function CitizenGrievanceDetail() {
                       {formatDateTime(message.created_at)}
                     </span>
                   </div>
-                  <p className="text-sm text-muted-foreground">{message.body}</p>
+                  <TranslatedText
+                    text={message.body}
+                    contentType="message"
+                    className="text-sm text-muted-foreground"
+                  />
                 </CardContent>
               </Card>
             ))}
@@ -372,10 +409,15 @@ function CitizenGrievanceDetail() {
                       {formatDate(resolution.created_at)}
                     </span>
                   </div>
-                  <p className="text-sm">{resolution.action_taken}</p>
-                  <p className="text-sm text-muted-foreground">
-                    Claimed outcome: {resolution.outcome_claimed}
-                  </p>
+                  <TranslatedText
+                    text={resolution.action_taken}
+                    contentType="resolution"
+                    className="text-sm"
+                  />
+                  <div className="text-sm text-muted-foreground">
+                    <span>Claimed outcome: </span>
+                    <TranslatedText text={resolution.outcome_claimed} contentType="resolution" />
+                  </div>
                 </CardContent>
               </Card>
             ))}
@@ -495,6 +537,185 @@ function CitizenGrievanceDetail() {
         />
       </section>
     </div>
+  );
+}
+
+function CitizenClarificationResponse({
+  grievanceId,
+  request,
+  userId,
+  onSaved,
+}: {
+  grievanceId: string;
+  request: ClarificationRequestRow;
+  userId: string | undefined;
+  onSaved: () => void;
+}) {
+  const queryClient = useQueryClient();
+  const [response, setResponse] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+  const mutation = useMutation({
+    mutationFn: async () => {
+      if (!userId) throw new Error("Your authenticated session is unavailable.");
+      let documentId: string | undefined;
+      if (file)
+        documentId = (
+          await uploadCitizenDocument({
+            grievanceId,
+            userId,
+            file,
+            docKind: "clarification_response",
+          })
+        ).id;
+      await respondToCitizenClarification({
+        clarificationRequestId: request.id,
+        response,
+        ...(documentId ? { documentId } : {}),
+      });
+    },
+    onSuccess: async () => {
+      onSaved();
+      if (!userId) return;
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: cpgramsQueryKeys.grievance(grievanceId) }),
+        queryClient.invalidateQueries({ queryKey: cpgramsQueryKeys.citizenGrievances(userId) }),
+        queryClient.invalidateQueries({ queryKey: cpgramsQueryKeys.notifications(userId) }),
+        queryClient.invalidateQueries({
+          queryKey: cpgramsQueryKeys.citizenReminderStatus(grievanceId),
+        }),
+      ]);
+    },
+  });
+  return (
+    <ActionRequiredCard title="Government needs clarification" description={request.question}>
+      <form
+        className="space-y-3"
+        onSubmit={(event) => {
+          event.preventDefault();
+          mutation.mutate();
+        }}
+      >
+        <div className="space-y-2">
+          <label className="text-sm font-medium" htmlFor={`clarification-${request.id}`}>
+            Your response
+          </label>
+          <Textarea
+            id={`clarification-${request.id}`}
+            value={response}
+            onChange={(event) => setResponse(event.target.value)}
+            rows={4}
+            maxLength={4_000}
+            placeholder="Provide the information the government office requested."
+            required
+          />
+        </div>
+        <div className="space-y-2">
+          <label className="text-sm font-medium" htmlFor={`clarification-file-${request.id}`}>
+            Attachment (optional, maximum 6 MB)
+          </label>
+          <Input
+            id={`clarification-file-${request.id}`}
+            type="file"
+            onChange={(event) => setFile(event.target.files?.[0] ?? null)}
+          />
+        </div>
+        <p className="text-xs text-muted-foreground">
+          SLA clock paused · Reason: Waiting for information from you
+        </p>
+        <Button type="submit" size="sm" disabled={!response.trim() || mutation.isPending}>
+          {mutation.isPending ? "Submitting clarification…" : "Submit clarification"}
+        </Button>
+        {mutation.isError && (
+          <p className="text-sm text-critical" role="alert">
+            {queryErrorDetail(mutation.error)}
+          </p>
+        )}
+      </form>
+    </ActionRequiredCard>
+  );
+}
+
+function CitizenReminder({ grievanceId, userId }: { grievanceId: string; userId: string }) {
+  const queryClient = useQueryClient();
+  const statusQuery = useCitizenReminderStatusQuery(grievanceId);
+  const [message, setMessage] = useState("");
+  const [success, setSuccess] = useState(false);
+  const mutation = useMutation({
+    mutationFn: () => sendCitizenReminder(grievanceId, message),
+    onSuccess: async () => {
+      setMessage("");
+      setSuccess(true);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: cpgramsQueryKeys.grievance(grievanceId) }),
+        queryClient.invalidateQueries({ queryKey: cpgramsQueryKeys.citizenGrievances(userId) }),
+        queryClient.invalidateQueries({
+          queryKey: cpgramsQueryKeys.citizenReminderStatus(grievanceId),
+        }),
+      ]);
+    },
+  });
+  if (statusQuery.isPending) return null;
+  if (statusQuery.isError)
+    return (
+      <Card className="border-border">
+        <CardContent className="p-5">
+          <p className="text-sm text-critical" role="alert">
+            {queryErrorDetail(statusQuery.error)}
+          </p>
+        </CardContent>
+      </Card>
+    );
+  const status = statusQuery.data;
+  return (
+    <Card className="border-border">
+      <CardContent className="space-y-3 p-5">
+        <div>
+          <h2 className="text-sm font-semibold">Send a reminder</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Ask the assigned officer for an update on this open grievance. Reminder priority is
+            rate-limited and capped.
+          </p>
+        </div>
+        {success && (
+          <p className="text-sm text-success" role="status">
+            Reminder sent to the assigned officer.
+          </p>
+        )}
+        {status?.eligible ? (
+          <form
+            className="space-y-3"
+            onSubmit={(event) => {
+              event.preventDefault();
+              setSuccess(false);
+              mutation.mutate();
+            }}
+          >
+            <Textarea
+              value={message}
+              onChange={(event) => setMessage(event.target.value)}
+              rows={3}
+              maxLength={500}
+              placeholder="Write a short reminder for the assigned officer."
+              required
+            />
+            <Button type="submit" size="sm" disabled={!message.trim() || mutation.isPending}>
+              {mutation.isPending ? "Sending reminder…" : "Send reminder"}
+            </Button>
+          </form>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            {status?.nextReminderAt && new Date(status.nextReminderAt).getTime() > Date.now()
+              ? `You can send another reminder after ${formatDateTime(status.nextReminderAt)}.`
+              : (status?.reason ?? "A reminder is not available for this grievance right now.")}
+          </p>
+        )}
+        {mutation.isError && (
+          <p className="text-sm text-critical" role="alert">
+            {queryErrorDetail(mutation.error)}
+          </p>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 

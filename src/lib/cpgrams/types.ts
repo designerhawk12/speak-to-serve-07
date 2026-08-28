@@ -19,20 +19,12 @@ export type AdminStatus =
 
 /** What the CITIZEN says about their problem. Deliberately separate. */
 export type CitizenOutcomeStatus =
-  | "not_reported"
-  | "problem_persists"
-  | "partially_resolved"
-  | "confirmed_resolved";
+  "not_reported" | "problem_persists" | "partially_resolved" | "confirmed_resolved";
 
 export type AppealStatus =
-  | "not_filed"
-  | "eligible"
-  | "filed"
-  | "under_appeal_review"
-  | "appeal_decided"
-  | "appeal_rejected";
+  "not_filed" | "eligible" | "filed" | "under_appeal_review" | "appeal_decided" | "appeal_rejected";
 
-export type SlaState = "on_track" | "due_soon" | "breached" | "paused";
+export type SlaState = "on_track" | "due_soon" | "breached" | "paused" | "completed";
 
 export type StatusTone = "neutral" | "info" | "warning" | "success" | "critical";
 
@@ -144,9 +136,14 @@ export const SLA_STATE_META: Record<SlaState, StatusMeta> = {
   due_soon: { label: "Due soon", tone: "warning", meaning: "The deadline is approaching." },
   breached: { label: "Overdue", tone: "critical", meaning: "The committed timeline has passed." },
   paused: {
-    label: "Clock paused",
+    label: "SLA clock paused",
     tone: "neutral",
-    meaning: "The timeline is paused while information is awaited.",
+    meaning: "Reason: Waiting for information from you.",
+  },
+  completed: {
+    label: "Government processing complete",
+    tone: "neutral",
+    meaning: "The original grievance SLA clock stopped when the government response was provided.",
   },
 };
 

@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
   addOfficerInterimUpdate,
+  flagOfficerWrongRoute,
   requestOfficerClarification,
   requestOfficerDocuments,
   replyToAppeal,
@@ -18,11 +19,14 @@ import {
   type OfficerChecklistItem,
 } from "@/lib/cpgrams/data-access";
 import { cpgramsQueryKeys, queryErrorDetail } from "@/lib/cpgrams/queries";
+import { authorizedTransferOrganizationIds } from "@/lib/cpgrams/officer-assignment";
+import type { AppRole } from "@/lib/cpgrams/session";
 
 type ActionKind =
   | "clarification"
   | "documents"
   | "interim"
+  | "wrong_route"
   | "transfer"
   | "evidence"
   | "resolution"
@@ -31,6 +35,7 @@ const actions: Array<{ id: ActionKind; label: string }> = [
   { id: "clarification", label: "Request clarification" },
   { id: "documents", label: "Request documents" },
   { id: "interim", label: "Add interim update" },
+  { id: "wrong_route", label: "Incorrectly routed" },
   { id: "transfer", label: "Transfer" },
   { id: "evidence", label: "Attach evidence" },
   { id: "resolution", label: "Resolution composer" },
@@ -42,20 +47,49 @@ export function OfficerCaseActions({
   userId,
   organizations,
   appealId,
+  transferDueAt,
+  wrongRouteResolvedAt,
+  actorRole,
+  actorOrganizationId,
+  sourceOrganizationId,
 }: {
   grievanceId: string;
   citizenId: string;
   userId: string;
-  organizations: Array<{ id: string; name: string }>;
+  organizations: Array<{
+    id: string;
+    name: string;
+    parent_id: string | null;
+    is_active: boolean;
+    is_appellate_office: boolean;
+  }>;
   appealId?: string;
+  transferDueAt?: string | null | undefined;
+  wrongRouteResolvedAt?: string | null | undefined;
+  actorRole: AppRole;
+  actorOrganizationId: string | null;
+  sourceOrganizationId: string | null;
 }) {
   const [active, setActive] = useState<ActionKind | null>(null);
   const [appealReplySuccess, setAppealReplySuccess] = useState("");
   const queryClient = useQueryClient();
+  const transferOrganizationIds =
+    actorRole === "gro" || actorRole === "nodal"
+      ? authorizedTransferOrganizationIds(
+          organizations,
+          actorRole,
+          actorOrganizationId,
+          sourceOrganizationId,
+        )
+      : new Set<string>();
+  const transferOrganizations = organizations.filter((organization) =>
+    transferOrganizationIds.has(organization.id),
+  );
   const refresh = async () => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: cpgramsQueryKeys.grievance(grievanceId) }),
       queryClient.invalidateQueries({ queryKey: cpgramsQueryKeys.authorizedGrievances }),
+      queryClient.invalidateQueries({ queryKey: cpgramsQueryKeys.authorizedGrievancePages }),
       queryClient.invalidateQueries({ queryKey: cpgramsQueryKeys.citizenGrievances(citizenId) }),
       queryClient.invalidateQueries({ queryKey: cpgramsQueryKeys.notifications(citizenId) }),
     ]);
@@ -96,8 +130,20 @@ export function OfficerCaseActions({
           {active === "clarification" && <Clarification grievanceId={grievanceId} done={refresh} />}
           {active === "documents" && <Documents grievanceId={grievanceId} done={refresh} />}
           {active === "interim" && <Interim grievanceId={grievanceId} done={refresh} />}
+          {active === "wrong_route" && (
+            <FlagWrongRoute
+              grievanceId={grievanceId}
+              transferDueAt={transferDueAt}
+              wrongRouteResolvedAt={wrongRouteResolvedAt}
+              done={refresh}
+            />
+          )}
           {active === "transfer" && (
-            <Transfer grievanceId={grievanceId} organizations={organizations} done={refresh} />
+            <Transfer
+              grievanceId={grievanceId}
+              organizations={transferOrganizations}
+              done={refresh}
+            />
           )}
           {active === "evidence" && (
             <Evidence grievanceId={grievanceId} userId={userId} done={refresh} />
@@ -320,6 +366,55 @@ function Interim({ grievanceId, done }: { grievanceId: string; done: () => Promi
         {m.isPending ? "Saving" : "Publish interim update"}
       </Button>
       <Failure m={m} />
+    </Shell>
+  );
+}
+
+function FlagWrongRoute({
+  grievanceId,
+  transferDueAt,
+  wrongRouteResolvedAt,
+  done,
+}: {
+  grievanceId: string;
+  transferDueAt?: string | null | undefined;
+  wrongRouteResolvedAt?: string | null | undefined;
+  done: () => Promise<void>;
+}) {
+  const [reason, setReason] = useState("");
+  const pending = Boolean(transferDueAt && !wrongRouteResolvedAt);
+  const mutation = useMutation({
+    mutationFn: () => flagOfficerWrongRoute({ grievanceId, reason }),
+    onSuccess: done,
+  });
+
+  return (
+    <Shell title="Incorrectly routed / needs transfer">
+      {pending ? (
+        <p className="text-sm text-warning">
+          This case is already marked for transfer. Complete the organization transfer before the
+          recorded deadline.
+        </p>
+      ) : (
+        <>
+          <p className="text-sm text-muted-foreground">
+            This records an immutable routing event and starts the 48-hour transfer deadline. It
+            does not change the current organization or officer by itself.
+          </p>
+          <Field label="Why is the current routing incorrect?">
+            <Textarea
+              value={reason}
+              onChange={(event) => setReason(event.target.value)}
+              rows={3}
+              placeholder="Explain why another government organization should receive this case."
+            />
+          </Field>
+          <Button disabled={!reason.trim() || mutation.isPending} onClick={() => mutation.mutate()}>
+            {mutation.isPending ? "Recording" : "Start 48-hour transfer requirement"}
+          </Button>
+          <Failure m={mutation} />
+        </>
+      )}
     </Shell>
   );
 }

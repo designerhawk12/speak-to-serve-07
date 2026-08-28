@@ -13,11 +13,32 @@ export interface ResolutionConfirmationInput {
 }
 
 export interface ResolutionConfirmationServices {
-  confirm: (input: Omit<ResolutionConfirmationInput, "userId" | "file"> & { evidenceDocumentId: string | null }) => Promise<void>;
-  uploadEvidence: (input: { grievanceId: string; userId: string; file: File }) => Promise<{ id: string }>;
+  confirm: (
+    input: Omit<ResolutionConfirmationInput, "userId" | "file"> & {
+      evidenceDocumentId: string | null;
+    },
+  ) => Promise<void>;
+  uploadEvidence: (input: {
+    grievanceId: string;
+    userId: string;
+    file: File;
+  }) => Promise<{ id: string }>;
 }
 
-export function validateResolutionConfirmation(input: Pick<ResolutionConfirmationInput, "confirmation" | "whatWasFixed" | "whatRemainsUnresolved" | "requestedCorrection">): string | null {
+/** Synchronously guards the rendered submit handler before React Query updates
+ * its pending state, closing the rapid-double-click window. */
+export function acquireResolutionSubmissionLock(lock: { current: boolean }): boolean {
+  if (lock.current) return false;
+  lock.current = true;
+  return true;
+}
+
+export function validateResolutionConfirmation(
+  input: Pick<
+    ResolutionConfirmationInput,
+    "confirmation" | "whatWasFixed" | "whatRemainsUnresolved" | "requestedCorrection"
+  >,
+): string | null {
   if (input.confirmation === "CONFIRMED_RESOLVED") return null;
   if (input.confirmation === "PARTIALLY_RESOLVED") {
     if (!input.whatWasFixed.trim()) return "Tell us what was fixed.";
@@ -30,9 +51,18 @@ export function validateResolutionConfirmation(input: Pick<ResolutionConfirmatio
 }
 
 /** The route's submit handler delegates here so persistence is testable as one flow. */
-export async function submitResolutionConfirmation(input: ResolutionConfirmationInput, services: ResolutionConfirmationServices): Promise<void> {
+export async function submitResolutionConfirmation(
+  input: ResolutionConfirmationInput,
+  services: ResolutionConfirmationServices,
+): Promise<void> {
   const evidenceDocumentId = input.file
-    ? (await services.uploadEvidence({ grievanceId: input.grievanceId, userId: input.userId, file: input.file })).id
+    ? (
+        await services.uploadEvidence({
+          grievanceId: input.grievanceId,
+          userId: input.userId,
+          file: input.file,
+        })
+      ).id
     : null;
   await services.confirm({
     grievanceId: input.grievanceId,
@@ -45,10 +75,19 @@ export async function submitResolutionConfirmation(input: ResolutionConfirmation
 }
 
 /** Refetches active case and dashboard observers so the visible state changes immediately. */
-export async function refreshAfterResolutionConfirmation(queryClient: QueryClient, grievanceId: string, userId: string): Promise<void> {
-  const keys = [cpgramsQueryKeys.grievance(grievanceId), cpgramsQueryKeys.citizenGrievances(userId)];
-  await Promise.all(keys.map(async (queryKey) => {
-    await queryClient.invalidateQueries({ queryKey });
-    await queryClient.refetchQueries({ queryKey, type: "active" });
-  }));
+export async function refreshAfterResolutionConfirmation(
+  queryClient: QueryClient,
+  grievanceId: string,
+  userId: string,
+): Promise<void> {
+  const keys = [
+    cpgramsQueryKeys.grievance(grievanceId),
+    cpgramsQueryKeys.citizenGrievances(userId),
+  ];
+  await Promise.all(
+    keys.map(async (queryKey) => {
+      await queryClient.invalidateQueries({ queryKey });
+      await queryClient.refetchQueries({ queryKey, type: "active" });
+    }),
+  );
 }

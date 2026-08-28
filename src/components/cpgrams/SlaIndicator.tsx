@@ -7,6 +7,7 @@ const barTone: Record<SlaState, string> = {
   due_soon: "bg-warning",
   breached: "bg-critical",
   paused: "bg-border-strong",
+  completed: "bg-border-strong",
 };
 
 const textTone: Record<SlaState, string> = {
@@ -14,6 +15,7 @@ const textTone: Record<SlaState, string> = {
   due_soon: "text-warning-foreground",
   breached: "text-critical",
   paused: "text-muted-foreground",
+  completed: "text-muted-foreground",
 };
 
 export interface SlaIndicatorProps {
@@ -39,7 +41,13 @@ export function SlaIndicator({
 
   if (compact) {
     return (
-      <span className={cn("inline-flex items-center gap-1.5 text-xs font-medium", textTone[state], className)}>
+      <span
+        className={cn(
+          "inline-flex items-center gap-1.5 text-xs font-medium",
+          textTone[state],
+          className,
+        )}
+      >
         <Clock className="size-3.5" aria-hidden />
         {meta.label}
         {dueLabel && <span className="text-muted-foreground">· {dueLabel}</span>}
@@ -50,7 +58,9 @@ export function SlaIndicator({
   return (
     <div className={cn("space-y-2", className)}>
       <div className="flex items-baseline justify-between gap-3">
-        <span className={cn("inline-flex items-center gap-1.5 text-sm font-semibold", textTone[state])}>
+        <span
+          className={cn("inline-flex items-center gap-1.5 text-sm font-semibold", textTone[state])}
+        >
           <Clock className="size-4" aria-hidden />
           {meta.label}
         </span>
@@ -64,7 +74,10 @@ export function SlaIndicator({
         aria-valuemax={100}
         aria-label={`Timeline progress: ${meta.label}`}
       >
-        <div className={cn("h-full rounded-full transition-all", barTone[state])} style={{ width: `${pct}%` }} />
+        <div
+          className={cn("h-full rounded-full transition-all", barTone[state])}
+          style={{ width: `${pct}%` }}
+        />
       </div>
       <p className="text-xs text-muted-foreground">{label ?? meta.meaning}</p>
     </div>

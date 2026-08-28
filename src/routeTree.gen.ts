@@ -11,12 +11,16 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AboutRouteImport } from './routes/about'
+import { Route as AccessibilityRouteImport } from './routes/accessibility'
 import { Route as AppealStatusRouteImport } from './routes/appeal-status'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as CitizenRouteImport } from './routes/citizen'
 import { Route as ContactRouteImport } from './routes/contact'
+import { Route as DisclaimerRouteImport } from './routes/disclaimer'
 import { Route as FaqRouteImport } from './routes/faq'
 import { Route as OfficeRouteImport } from './routes/office'
+import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as SitemapRouteImport } from './routes/sitemap'
 import { Route as TrackRouteImport } from './routes/track'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
@@ -56,6 +60,11 @@ const AboutRoute = AboutRouteImport.update({
   path: '/about',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AccessibilityRoute = AccessibilityRouteImport.update({
+  id: '/accessibility',
+  path: '/accessibility',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AppealStatusRoute = AppealStatusRouteImport.update({
   id: '/appeal-status',
   path: '/appeal-status',
@@ -76,6 +85,11 @@ const ContactRoute = ContactRouteImport.update({
   path: '/contact',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DisclaimerRoute = DisclaimerRouteImport.update({
+  id: '/disclaimer',
+  path: '/disclaimer',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const FaqRoute = FaqRouteImport.update({
   id: '/faq',
   path: '/faq',
@@ -84,6 +98,16 @@ const FaqRoute = FaqRouteImport.update({
 const OfficeRoute = OfficeRouteImport.update({
   id: '/office',
   path: '/office',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SitemapRoute = SitemapRouteImport.update({
+  id: '/sitemap',
+  path: '/sitemap',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TrackRoute = TrackRouteImport.update({
@@ -233,12 +257,16 @@ const CitizenGrievancesIdSubmittedRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/accessibility': typeof AccessibilityRoute
   '/appeal-status': typeof AppealStatusRoute
   '/auth': typeof AuthRouteWithChildren
   '/citizen': typeof CitizenRouteWithChildren
   '/contact': typeof ContactRoute
+  '/disclaimer': typeof DisclaimerRoute
   '/faq': typeof FaqRoute
   '/office': typeof OfficeRouteWithChildren
+  '/privacy': typeof PrivacyRoute
+  '/sitemap': typeof SitemapRoute
   '/track': typeof TrackRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
@@ -271,10 +299,14 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/accessibility': typeof AccessibilityRoute
   '/appeal-status': typeof AppealStatusRoute
   '/auth': typeof AuthRouteWithChildren
   '/contact': typeof ContactRoute
+  '/disclaimer': typeof DisclaimerRoute
   '/faq': typeof FaqRoute
+  '/privacy': typeof PrivacyRoute
+  '/sitemap': typeof SitemapRoute
   '/track': typeof TrackRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
@@ -308,12 +340,16 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/accessibility': typeof AccessibilityRoute
   '/appeal-status': typeof AppealStatusRoute
   '/auth': typeof AuthRouteWithChildren
   '/citizen': typeof CitizenRouteWithChildren
   '/contact': typeof ContactRoute
+  '/disclaimer': typeof DisclaimerRoute
   '/faq': typeof FaqRoute
   '/office': typeof OfficeRouteWithChildren
+  '/privacy': typeof PrivacyRoute
+  '/sitemap': typeof SitemapRoute
   '/track': typeof TrackRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
@@ -348,12 +384,16 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/about'
+    | '/accessibility'
     | '/appeal-status'
     | '/auth'
     | '/citizen'
     | '/contact'
+    | '/disclaimer'
     | '/faq'
     | '/office'
+    | '/privacy'
+    | '/sitemap'
     | '/track'
     | '/auth/callback'
     | '/auth/forgot-password'
@@ -386,10 +426,14 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/about'
+    | '/accessibility'
     | '/appeal-status'
     | '/auth'
     | '/contact'
+    | '/disclaimer'
     | '/faq'
+    | '/privacy'
+    | '/sitemap'
     | '/track'
     | '/auth/callback'
     | '/auth/forgot-password'
@@ -422,12 +466,16 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/about'
+    | '/accessibility'
     | '/appeal-status'
     | '/auth'
     | '/citizen'
     | '/contact'
+    | '/disclaimer'
     | '/faq'
     | '/office'
+    | '/privacy'
+    | '/sitemap'
     | '/track'
     | '/auth/callback'
     | '/auth/forgot-password'
@@ -461,12 +509,16 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
+  AccessibilityRoute: typeof AccessibilityRoute
   AppealStatusRoute: typeof AppealStatusRoute
   AuthRoute: typeof AuthRouteWithChildren
   CitizenRoute: typeof CitizenRouteWithChildren
   ContactRoute: typeof ContactRoute
+  DisclaimerRoute: typeof DisclaimerRoute
   FaqRoute: typeof FaqRoute
   OfficeRoute: typeof OfficeRouteWithChildren
+  PrivacyRoute: typeof PrivacyRoute
+  SitemapRoute: typeof SitemapRoute
   TrackRoute: typeof TrackRoute
   DashboardAppealsRoute: typeof DashboardAppealsRoute
   DashboardPublicRoute: typeof DashboardPublicRoute
@@ -490,6 +542,13 @@ declare module '@tanstack/react-router' {
       path: '/about'
       fullPath: '/about'
       preLoaderRoute: typeof AboutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/accessibility': {
+      id: '/accessibility'
+      path: '/accessibility'
+      fullPath: '/accessibility'
+      preLoaderRoute: typeof AccessibilityRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/appeal-status': {
@@ -520,6 +579,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ContactRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/disclaimer': {
+      id: '/disclaimer'
+      path: '/disclaimer'
+      fullPath: '/disclaimer'
+      preLoaderRoute: typeof DisclaimerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/faq': {
       id: '/faq'
       path: '/faq'
@@ -532,6 +598,20 @@ declare module '@tanstack/react-router' {
       path: '/office'
       fullPath: '/office'
       preLoaderRoute: typeof OfficeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sitemap': {
+      id: '/sitemap'
+      path: '/sitemap'
+      fullPath: '/sitemap'
+      preLoaderRoute: typeof SitemapRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/track': {
@@ -813,12 +893,16 @@ const OfficeRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
+  AccessibilityRoute: AccessibilityRoute,
   AppealStatusRoute: AppealStatusRoute,
   AuthRoute: AuthRouteWithChildren,
   CitizenRoute: CitizenRouteWithChildren,
   ContactRoute: ContactRoute,
+  DisclaimerRoute: DisclaimerRoute,
   FaqRoute: FaqRoute,
   OfficeRoute: OfficeRouteWithChildren,
+  PrivacyRoute: PrivacyRoute,
+  SitemapRoute: SitemapRoute,
   TrackRoute: TrackRoute,
   DashboardAppealsRoute: DashboardAppealsRoute,
   DashboardPublicRoute: DashboardPublicRoute,

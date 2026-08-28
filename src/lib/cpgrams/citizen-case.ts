@@ -1,4 +1,10 @@
-import type { AppealRow, DocumentRequestItemRow, DocumentRequestRow, GrievanceRow } from "./data-access";
+import type {
+  AppealRow,
+  ClarificationRequestRow,
+  DocumentRequestItemRow,
+  DocumentRequestRow,
+  GrievanceRow,
+} from "./data-access";
 
 export type CitizenActionState =
   | "no_action_required"
@@ -31,7 +37,8 @@ const presentations: Record<CitizenActionState, CitizenActionPresentation> = {
   upload_documents: {
     state: "upload_documents",
     title: "Upload documents",
-    description: "The office needs the requested evidence before it can continue reviewing your case.",
+    description:
+      "The office needs the requested evidence before it can continue reviewing your case.",
     requiresAction: true,
   },
   answer_clarification: {
@@ -42,21 +49,26 @@ const presentations: Record<CitizenActionState, CitizenActionPresentation> = {
   },
   review_government_resolution: {
     state: "review_government_resolution",
-    title: "Review government resolution",
-    description: "The office has provided a resolution. Please confirm whether your real-world problem is solved.",
+    title: "Review government's resolution",
+    description:
+      "The office has provided a resolution. Please confirm whether your real-world problem is solved.",
     requiresAction: true,
   },
   appeal_available: {
     state: "appeal_available",
     title: "Appeal available",
-    description: "You can ask an Appellate Authority to review this case if the recorded action did not resolve the problem.",
+    description:
+      "You can ask an Appellate Authority to review this case if the recorded action did not resolve the problem.",
     requiresAction: true,
   },
 };
 
 export function requiredDocumentProgress(items: DocumentRequestItemRow[]) {
   const required = items.filter((item) => item.is_required);
-  return { required: required.length, supplied: required.filter((item) => item.document_id).length };
+  return {
+    required: required.length,
+    supplied: required.filter((item) => item.document_id).length,
+  };
 }
 
 /** Deterministic citizen UI state derived from existing, separate database facts. */
@@ -65,22 +77,28 @@ export function getCitizenActionState(
   requests: DocumentRequestRow[],
   requestItems: DocumentRequestItemRow[],
   appeals: AppealRow[],
+  clarificationRequests: ClarificationRequestRow[] = [],
 ): CitizenActionPresentation {
-  const openRequestIds = new Set(requests.filter((request) => !request.fulfilled_at).map((request) => request.id));
+  const openRequestIds = new Set(
+    requests.filter((request) => !request.fulfilled_at).map((request) => request.id),
+  );
   const pendingRequiredDocument = requestItems.some(
     (item) => item.is_required && !item.document_id && openRequestIds.has(item.request_id),
   );
   if (pendingRequiredDocument) return presentations.upload_documents;
-  if (grievance.administrative_state === "CLARIFICATION_REQUIRED") return presentations.answer_clarification;
+  if (clarificationRequests.some((request) => !request.fulfilled_at))
+    return presentations.answer_clarification;
   if (
     grievance.outcome_state === "RESOLUTION_PROPOSED" &&
     grievance.citizen_confirmation_state === "AWAITING_CONFIRMATION"
-  ) return presentations.review_government_resolution;
+  )
+    return presentations.review_government_resolution;
   if (
     appeals.length === 0 &&
     ["RESOLUTION_PROVIDED", "DISPOSED", "CLOSED"].includes(grievance.administrative_state) &&
     ["NOT_RESOLVED", "PARTIALLY_RESOLVED"].includes(grievance.citizen_confirmation_state)
-  ) return presentations.appeal_available;
+  )
+    return presentations.appeal_available;
   return presentations.no_action_required;
 }
 
@@ -93,31 +111,54 @@ export function getCitizenActionItems(
   requests: DocumentRequestRow[],
   requestItems: DocumentRequestItemRow[],
   appeals: AppealRow[],
+  clarificationRequests: ClarificationRequestRow[] = [],
 ): CitizenActionItem[] {
   const actions: CitizenActionItem[] = [];
-  const addPresentation = (presentation: CitizenActionPresentation) => actions.push({
-    id: presentation.state,
-    state: presentation.state as CitizenActionItem["state"],
-    title: presentation.title,
-    description: presentation.description,
-  });
+  const addPresentation = (presentation: CitizenActionPresentation) =>
+    actions.push({
+      id: presentation.state,
+      state: presentation.state as CitizenActionItem["state"],
+      title: presentation.title,
+      description: presentation.description,
+    });
   for (const request of requests.filter((entry) => !entry.fulfilled_at)) {
     const items = requestItems.filter((item) => item.request_id === request.id);
-    const outstandingRequired = items.filter((item) => item.is_required && !item.document_id).length;
-    if (outstandingRequired > 0) actions.push({
-      id: `upload_documents:${request.id}`,
-      state: "upload_documents",
-      title: "Upload requested documents",
-      description: request.reason || `${outstandingRequired} required document${outstandingRequired === 1 ? " is" : "s are"} still needed.`,
-    });
+    const outstandingRequired = items.filter(
+      (item) => item.is_required && !item.document_id,
+    ).length;
+    if (outstandingRequired > 0)
+      actions.push({
+        id: `upload_documents:${request.id}`,
+        state: "upload_documents",
+        title: "Upload requested documents",
+        description:
+          request.reason ||
+          `${outstandingRequired} required document${outstandingRequired === 1 ? " is" : "s are"} still needed.`,
+      });
   }
-  if (grievance.administrative_state === "CLARIFICATION_REQUIRED") addPresentation(presentations.answer_clarification);
-  if (grievance.outcome_state === "RESOLUTION_PROPOSED" && grievance.citizen_confirmation_state === "AWAITING_CONFIRMATION") addPresentation(presentations.review_government_resolution);
-  if (appeals.length === 0 && ["RESOLUTION_PROVIDED", "DISPOSED", "CLOSED"].includes(grievance.administrative_state) && ["NOT_RESOLVED", "PARTIALLY_RESOLVED"].includes(grievance.citizen_confirmation_state)) addPresentation(presentations.appeal_available);
+  for (const request of clarificationRequests.filter((entry) => !entry.fulfilled_at))
+    actions.push({
+      id: "answer_clarification",
+      state: "answer_clarification",
+      title: "Answer clarification",
+      description: request.question,
+    });
+  if (
+    grievance.outcome_state === "RESOLUTION_PROPOSED" &&
+    grievance.citizen_confirmation_state === "AWAITING_CONFIRMATION"
+  )
+    addPresentation(presentations.review_government_resolution);
+  if (
+    appeals.length === 0 &&
+    ["RESOLUTION_PROVIDED", "DISPOSED", "CLOSED"].includes(grievance.administrative_state) &&
+    ["NOT_RESOLVED", "PARTIALLY_RESOLVED"].includes(grievance.citizen_confirmation_state)
+  )
+    addPresentation(presentations.appeal_available);
   return actions;
 }
 
-export type CitizenDashboardFilter = "all" | "active" | "action_required" | "resolution_review" | "appealed" | "closed";
+export type CitizenDashboardFilter =
+  "all" | "active" | "action_required" | "resolution_review" | "appealed" | "closed";
 
 export function matchesCitizenDashboardFilter(
   filter: CitizenDashboardFilter,
@@ -127,7 +168,8 @@ export function matchesCitizenDashboardFilter(
 ): boolean {
   if (filter === "all") return true;
   if (filter === "active") return !["DISPOSED", "CLOSED"].includes(grievance.administrative_state);
-  if (filter === "action_required") return action.requiresAction && action.state !== "review_government_resolution";
+  if (filter === "action_required")
+    return action.requiresAction && action.state !== "review_government_resolution";
   if (filter === "resolution_review") return action.state === "review_government_resolution";
   if (filter === "appealed") return appeals.length > 0;
   return ["DISPOSED", "CLOSED"].includes(grievance.administrative_state);

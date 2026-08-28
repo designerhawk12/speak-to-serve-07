@@ -13,6 +13,7 @@ import { toGrievanceSummary } from "@/lib/cpgrams/data-adapters";
 import { isWaitingOnCitizen } from "@/lib/cpgrams/officer-presentation";
 import { queryErrorDetail, useAuthorizedGrievancesQuery } from "@/lib/cpgrams/queries";
 import { PRIORITY_RANK } from "@/lib/cpgrams/priority-engine";
+import { isOriginalGovernmentProcessingActive } from "@/lib/cpgrams/resolution-lifecycle";
 
 export const Route = createFileRoute("/office/")({
   head: () => ({
@@ -44,30 +45,41 @@ function OfficeHome() {
       casesQuery.data?.requestsByGrievance[row.id] ?? [],
     ),
   );
+  const activeGrievanceIds = new Set(
+    (casesQuery.data?.grievances ?? [])
+      .filter((row) =>
+        isOriginalGovernmentProcessingActive(
+          row.administrative_state,
+          row.citizen_confirmation_state,
+        ),
+      )
+      .map((row) => row.id),
+  );
+  const activeGrievances = grievances.filter((grievance) => activeGrievanceIds.has(grievance.id));
   const persistent = grievances.filter((g) => g.citizenOutcome === "problem_persists");
-  const critical = grievances.filter(
+  const critical = activeGrievances.filter(
     (g) => casesQuery.data?.prioritiesByGrievance[g.id]?.priority_level === "CRITICAL",
   );
-  const highPriority = grievances.filter(
+  const highPriority = activeGrievances.filter(
     (g) => casesQuery.data?.prioritiesByGrievance[g.id]?.priority_level === "HIGH",
   );
-  const slaRisk = grievances.filter(
+  const slaRisk = activeGrievances.filter(
     (g) => g.sla?.state === "due_soon" || g.sla?.state === "breached",
   );
-  const waitingCitizen = grievances.filter((g) =>
+  const waitingCitizen = activeGrievances.filter((g) =>
     isWaitingOnCitizen(g, casesQuery.data?.prioritiesByGrievance[g.id]),
   );
-  const waitingOfficer = grievances.filter(
+  const waitingOfficer = activeGrievances.filter(
     (g) =>
       !isWaitingOnCitizen(g, casesQuery.data?.prioritiesByGrievance[g.id]) &&
       !["action_taken", "disposed", "closed_administratively"].includes(g.adminStatus),
   );
-  const newlyAssigned = grievances.filter((g) => g.adminStatus === "assigned");
+  const newlyAssigned = activeGrievances.filter((g) => g.adminStatus === "assigned");
   const related = grievances.filter(
     (g) =>
       g.category && grievances.some((other) => other.id !== g.id && other.category === g.category),
   ).length;
-  const priorityQueue = [...grievances].sort((a, b) => {
+  const priorityQueue = [...activeGrievances].sort((a, b) => {
     const aPriority = casesQuery.data?.prioritiesByGrievance[a.id];
     const bPriority = casesQuery.data?.prioritiesByGrievance[b.id];
     const levelDifference =

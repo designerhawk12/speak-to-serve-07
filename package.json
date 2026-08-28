@@ -12,6 +12,9 @@
     "test": "bun test",
     "demo:auth": "node --env-file=.env scripts/configure-demo-auth.mjs",
     "demo:priority-fixtures": "node --env-file=.env scripts/seed-priority-fixtures.mjs",
+    "demo:priority-scenarios": "bun --env-file=.env scripts/seed-priority-test-scenarios.ts",
+    "demo:priority-scenarios:remove": "bun --env-file=.env scripts/seed-priority-test-scenarios.ts --remove",
+    "demo:taxonomy:import": "node --env-file=.env scripts/import-taxonomy.mjs",
     "format": "prettier --write ."
   },
   "overrides": {

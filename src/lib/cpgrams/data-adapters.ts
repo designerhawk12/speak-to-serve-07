@@ -3,6 +3,7 @@ import type {
   AppealRow,
   AppealEventRow,
   CaseEventRow,
+  ClarificationRequestRow,
   DocumentRequestRow,
   DocumentRow,
   GrievanceRow,
@@ -16,11 +17,16 @@ import type {
   SlaState,
   TimelineEventRecord,
 } from "./types";
+import { originalGovernmentProcessingEndedAt } from "./resolution-lifecycle";
 
 type AdministrativeState = Database["public"]["Enums"]["administrative_state"];
 type ConfirmationState = Database["public"]["Enums"]["citizen_confirmation_state"];
 
-const dateFormatter = new Intl.DateTimeFormat("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+const dateFormatter = new Intl.DateTimeFormat("en-IN", {
+  day: "2-digit",
+  month: "short",
+  year: "numeric",
+});
 const dateTimeFormatter = new Intl.DateTimeFormat("en-IN", {
   day: "2-digit",
   month: "short",
@@ -39,10 +45,19 @@ export function formatDateTime(value: string): string {
 
 export function toAdminStatus(state: AdministrativeState): AdminStatus {
   if (state === "DRAFT" || state === "SUBMITTED") return "received";
-  if (state === "ROUTING" || state === "ROUTED" || state === "UNDER_EXAMINATION") return "under_review";
+  if (state === "ROUTING" || state === "ROUTED" || state === "UNDER_EXAMINATION")
+    return "under_review";
   if (state === "ASSIGNED") return "assigned";
   if (state === "CLARIFICATION_REQUIRED") return "awaiting_citizen_input";
-  if (["CITIZEN_RESPONSE_RECEIVED", "ACTION_IN_PROGRESS", "INTERIM_RESPONSE", "RESOLUTION_PROVIDED"].includes(state)) return "action_taken";
+  if (
+    [
+      "CITIZEN_RESPONSE_RECEIVED",
+      "ACTION_IN_PROGRESS",
+      "INTERIM_RESPONSE",
+      "RESOLUTION_PROVIDED",
+    ].includes(state)
+  )
+    return "action_taken";
   if (state === "CLOSED") return "closed_administratively";
   return "disposed";
 }
@@ -67,21 +82,30 @@ export function toAppealStatus(appeals: AppealRow[], grievance: GrievanceRow): A
     : "not_filed";
 }
 
-function toSla(grievance: GrievanceRow): GrievanceSummary["sla"] {
+function toSla(grievance: GrievanceRow, waitingOnCitizen = false): GrievanceSummary["sla"] {
   if (!grievance.sla_due_at || !grievance.submitted_at) return undefined;
   const start = new Date(grievance.submitted_at).getTime();
   const due = new Date(grievance.sla_due_at).getTime();
-  const now = Date.now();
+  const completedAt = originalGovernmentProcessingEndedAt(grievance);
+  const now = completedAt ? new Date(completedAt).getTime() : Date.now();
   let state: SlaState = "on_track";
-  if (grievance.administrative_state === "CLARIFICATION_REQUIRED") state = "paused";
+  if (completedAt) state = "completed";
+  else if (waitingOnCitizen) state = "paused";
   else if (now > due) state = "breached";
   else if (due - now <= 3 * 24 * 60 * 60 * 1000) state = "due_soon";
   const elapsed = Math.max(0, now - start);
   const duration = Math.max(1, due - start);
   return {
     state,
-    label: state === "paused" ? "Timeline paused while information is awaited" : `${Math.ceil(elapsed / 86_400_000)} days elapsed`,
-    dueLabel: `Due ${formatDate(grievance.sla_due_at)}`,
+    label:
+      state === "paused"
+        ? "Reason: Waiting for information from you"
+        : state === "completed"
+          ? `Government processing ended after ${Math.ceil(elapsed / 86_400_000)} days`
+          : `${Math.ceil(elapsed / 86_400_000)} days elapsed`,
+    dueLabel: completedAt
+      ? `Completed ${formatDate(completedAt)}`
+      : `Due ${formatDate(grievance.sla_due_at)}`,
     percentElapsed: Math.min(100, Math.round((elapsed / duration) * 100)),
   };
 }
@@ -92,8 +116,11 @@ export function toGrievanceSummary(
   appeals: AppealRow[] = [],
   requests: DocumentRequestRow[] = [],
   category?: string,
+  clarificationRequests: ClarificationRequestRow[] = [],
 ): GrievanceSummary {
   const openRequest = requests.find((request) => !request.fulfilled_at);
+  const waitingOnCitizen =
+    Boolean(openRequest) || clarificationRequests.some((request) => !request.fulfilled_at);
   return {
     id: grievance.id,
     registrationNumber: grievance.registration_number,
@@ -107,34 +134,64 @@ export function toGrievanceSummary(
     adminStatus: toAdminStatus(grievance.administrative_state),
     citizenOutcome: toCitizenOutcome(grievance.citizen_confirmation_state),
     appealStatus: toAppealStatus(appeals, grievance),
-    ...(toSla(grievance) ? { sla: toSla(grievance)! } : {}),
-    ...(openRequest?.reason
-      ? { actionRequired: openRequest.reason }
-      : grievance.administrative_state === "CLARIFICATION_REQUIRED"
-        ? { actionRequired: "The office needs more information before it can continue." }
-        : {}),
+    ...(toSla(grievance, waitingOnCitizen) ? { sla: toSla(grievance, waitingOnCitizen)! } : {}),
+    ...(openRequest?.reason ? { actionRequired: openRequest.reason } : {}),
   };
 }
 
 export function toTimelineEvent(event: CaseEventRow): TimelineEventRecord {
+  return toTimelineEventForViewer(event, "citizen");
+}
+
+export type TimelineViewer = "citizen" | "government";
+
+export function toTimelineEventForViewer(
+  event: CaseEventRow,
+  viewer: TimelineViewer,
+): TimelineEventRecord {
   const isCitizen = event.actor_type === "citizen";
   return {
     id: event.id,
     occurredAt: formatDateTime(event.created_at),
-    actorLabel: isCitizen ? "You" : event.actor_type === "system" ? "System" : "Government office",
+    actorLabel: isCitizen
+      ? viewer === "citizen"
+        ? "You"
+        : "Citizen"
+      : event.actor_type === "system"
+        ? "System"
+        : "Government",
     actorRole: isCitizen ? "citizen" : "officer",
     title: event.title,
     ...(event.description ? { description: event.description } : {}),
-    tone: event.event_type.includes("CONFIRM") ? "success" : event.event_type.includes("REQUEST") ? "warning" : "info",
+    tone: event.event_type.includes("CONFIRM")
+      ? "success"
+      : event.event_type.includes("REJECT")
+        ? "critical"
+        : event.event_type.includes("REQUEST")
+          ? "warning"
+          : "info",
   };
 }
 
 export function toAppealTimelineEvent(event: AppealEventRow): TimelineEventRecord {
+  return toAppealTimelineEventForViewer(event, "citizen");
+}
+
+export function toAppealTimelineEventForViewer(
+  event: AppealEventRow,
+  viewer: TimelineViewer,
+): TimelineEventRecord {
   const isCitizen = event.actor_type === "citizen";
   return {
     id: event.id,
     occurredAt: formatDateTime(event.created_at),
-    actorLabel: isCitizen ? "You" : event.actor_type === "system" ? "System" : "Appellate office",
+    actorLabel: isCitizen
+      ? viewer === "citizen"
+        ? "You"
+        : "Citizen"
+      : event.actor_type === "system"
+        ? "System"
+        : "Government",
     actorRole: isCitizen ? "citizen" : "appellate",
     title: event.title,
     ...(event.description ? { description: event.description } : {}),
@@ -146,8 +203,12 @@ export function toDocumentRecord(document: DocumentRow): DocumentRecord {
   return {
     id: document.id,
     name: document.file_name,
-    ...(document.doc_kind || document.mime_type ? { kind: document.doc_kind ?? document.mime_type! } : {}),
-    ...(document.size_bytes == null ? {} : { sizeLabel: `${Math.max(1, Math.round(document.size_bytes / 1024))} KB` }),
+    ...(document.doc_kind || document.mime_type
+      ? { kind: document.doc_kind ?? document.mime_type! }
+      : {}),
+    ...(document.size_bytes == null
+      ? {}
+      : { sizeLabel: `${Math.max(1, Math.round(document.size_bytes / 1024))} KB` }),
     uploadedBy: document.uploaded_by ? "Case participant" : "System",
     uploadedAt: formatDate(document.created_at),
   };

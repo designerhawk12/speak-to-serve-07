@@ -4,6 +4,10 @@ import type {
   IssueClusterRow,
   OfficeAnalyticsData,
 } from "./data-access";
+import {
+  isOriginalGovernmentProcessingActive,
+  originalGovernmentProcessingEndedAt,
+} from "./resolution-lifecycle";
 
 const MEANINGFUL_GOVERNMENT_EVENT_TYPES = new Set([
   "DOCUMENT_REQUESTED",
@@ -67,16 +71,20 @@ export function calculateSupervisorMetrics(
   const unresolved = grievances.filter((grievance) =>
     ["NOT_RESOLVED", "PARTIALLY_RESOLVED"].includes(grievance.citizen_confirmation_state),
   ).length;
-  const clarification = grievances.filter(
-    (grievance) => grievance.administrative_state === "CLARIFICATION_REQUIRED",
+  const clarification = grievances.filter((grievance) =>
+    (collection.clarificationsByGrievance?.[grievance.id] ?? []).some(
+      (request) => !request.fulfilled_at,
+    ),
   ).length;
   const slaMeasured = grievances.filter(
     (grievance) =>
       grievance.sla_due_at && !collection.prioritiesByGrievance[grievance.id]?.waiting_on_citizen,
   );
-  const onTime = slaMeasured.filter(
-    (grievance) => new Date(grievance.sla_due_at!).getTime() >= now.getTime(),
-  ).length;
+  const onTime = slaMeasured.filter((grievance) => {
+    const processingEndedAt = originalGovernmentProcessingEndedAt(grievance);
+    const measuredAt = processingEndedAt ? new Date(processingEndedAt).getTime() : now.getTime();
+    return new Date(grievance.sla_due_at!).getTime() >= measuredAt;
+  }).length;
   const transferCount = events.filter((event) => event.event_type === "CASE_TRANSFERRED").length;
   const firstResponseHours = grievances.flatMap((grievance) => {
     const first = firstMeaningfulGovernmentEvent(eventsByGrievance[grievance.id] ?? []);
@@ -115,10 +123,18 @@ export function calculateSupervisorMetrics(
     repeatGrievanceCount: repeatGrievanceIds.size,
     firstMeaningfulResponseHours: average(firstResponseHours),
     criticalCaseCount: grievances.filter(
-      (grievance) => collection.prioritiesByGrievance[grievance.id]?.priority_level === "CRITICAL",
+      (grievance) =>
+        isOriginalGovernmentProcessingActive(
+          grievance.administrative_state,
+          grievance.citizen_confirmation_state,
+        ) && collection.prioritiesByGrievance[grievance.id]?.priority_level === "CRITICAL",
     ).length,
     highPriorityCaseCount: grievances.filter(
-      (grievance) => collection.prioritiesByGrievance[grievance.id]?.priority_level === "HIGH",
+      (grievance) =>
+        isOriginalGovernmentProcessingActive(
+          grievance.administrative_state,
+          grievance.citizen_confirmation_state,
+        ) && collection.prioritiesByGrievance[grievance.id]?.priority_level === "HIGH",
     ).length,
     systemicIssueCount: clusters?.clusters.length ?? 0,
   };

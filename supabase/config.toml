@@ -1,1 +1,7 @@
 project_id = "ptriuuhnesupbdmrmwka"
+
+# Public guidance is available before sign-in. The function performs optional
+# user-JWT verification itself and separately authorizes any requested case
+# context through the caller-scoped RLS client.
+[functions.ai-gateway]
+verify_jwt = false

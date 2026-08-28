@@ -339,6 +339,111 @@ export type Database = {
           },
         ];
       };
+      clarification_requests: {
+        Row: {
+          fulfilled_at: string | null;
+          grievance_id: string;
+          id: string;
+          organization_id: string | null;
+          question: string;
+          request_message_id: string | null;
+          requested_at: string;
+          requested_by: string | null;
+          responded_by: string | null;
+          response_document_id: string | null;
+          response_message_id: string | null;
+          response_text: string | null;
+          resume_administrative_state: Database["public"]["Enums"]["administrative_state"];
+        };
+        Insert: {
+          fulfilled_at?: string | null;
+          grievance_id: string;
+          id?: string;
+          organization_id?: string | null;
+          question: string;
+          request_message_id?: string | null;
+          requested_at?: string;
+          requested_by?: string | null;
+          responded_by?: string | null;
+          response_document_id?: string | null;
+          response_message_id?: string | null;
+          response_text?: string | null;
+          resume_administrative_state?: Database["public"]["Enums"]["administrative_state"];
+        };
+        Update: {
+          fulfilled_at?: string | null;
+          grievance_id?: string;
+          id?: string;
+          organization_id?: string | null;
+          question?: string;
+          request_message_id?: string | null;
+          requested_at?: string;
+          requested_by?: string | null;
+          responded_by?: string | null;
+          response_document_id?: string | null;
+          response_message_id?: string | null;
+          response_text?: string | null;
+          resume_administrative_state?: Database["public"]["Enums"]["administrative_state"];
+        };
+        Relationships: [
+          {
+            foreignKeyName: "clarification_requests_grievance_id_fkey";
+            columns: ["grievance_id"];
+            isOneToOne: false;
+            referencedRelation: "grievances";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "clarification_requests_grievance_id_fkey";
+            columns: ["grievance_id"];
+            isOneToOne: false;
+            referencedRelation: "officer_case_queue";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "clarification_requests_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "clarification_requests_request_message_id_fkey";
+            columns: ["request_message_id"];
+            isOneToOne: false;
+            referencedRelation: "messages";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "clarification_requests_requested_by_fkey";
+            columns: ["requested_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "clarification_requests_responded_by_fkey";
+            columns: ["responded_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "clarification_requests_response_document_id_fkey";
+            columns: ["response_document_id"];
+            isOneToOne: false;
+            referencedRelation: "documents";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "clarification_requests_response_message_id_fkey";
+            columns: ["response_message_id"];
+            isOneToOne: false;
+            referencedRelation: "messages";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       document_request_items: {
         Row: {
           created_at: string;
@@ -464,6 +569,7 @@ export type Database = {
           size_bytes: number | null;
           storage_path: string;
           updated_at: string;
+          upload_idempotency_key: string | null;
           uploaded_by: string | null;
         };
         Insert: {
@@ -477,6 +583,7 @@ export type Database = {
           size_bytes?: number | null;
           storage_path: string;
           updated_at?: string;
+          upload_idempotency_key?: string | null;
           uploaded_by?: string | null;
         };
         Update: {
@@ -490,6 +597,7 @@ export type Database = {
           size_bytes?: number | null;
           storage_path?: string;
           updated_at?: string;
+          upload_idempotency_key?: string | null;
           uploaded_by?: string | null;
         };
         Relationships: [
@@ -525,6 +633,7 @@ export type Database = {
           evidence_document_id: string | null;
           grievance_id: string;
           id: string;
+          resolution_id: string | null;
           requested_correction: string | null;
           satisfaction_rating: number | null;
           updated_at: string;
@@ -539,6 +648,7 @@ export type Database = {
           evidence_document_id?: string | null;
           grievance_id: string;
           id?: string;
+          resolution_id?: string | null;
           requested_correction?: string | null;
           satisfaction_rating?: number | null;
           updated_at?: string;
@@ -553,6 +663,7 @@ export type Database = {
           evidence_document_id?: string | null;
           grievance_id?: string;
           id?: string;
+          resolution_id?: string | null;
           requested_correction?: string | null;
           satisfaction_rating?: number | null;
           updated_at?: string;
@@ -579,6 +690,13 @@ export type Database = {
             columns: ["grievance_id"];
             isOneToOne: false;
             referencedRelation: "grievances";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "feedback_resolution_id_fkey";
+            columns: ["resolution_id"];
+            isOneToOne: false;
+            referencedRelation: "resolutions";
             referencedColumns: ["id"];
           },
           {
@@ -713,9 +831,11 @@ export type Database = {
           created_at: string;
           disposed_at: string | null;
           district_name: string | null;
+          government_response_completed_at: string | null;
           id: string;
           location_text: string | null;
           organization_id: string | null;
+          original_language: string;
           original_text: string;
           outcome_state: Database["public"]["Enums"]["outcome_state"];
           registration_number: string;
@@ -725,8 +845,11 @@ export type Database = {
           state_name: string | null;
           submission_key: string | null;
           submitted_at: string | null;
+          transfer_due_at: string | null;
           updated_at: string;
           urgency: Database["public"]["Enums"]["urgency_level"];
+          wrong_route_detected_at: string | null;
+          wrong_route_resolved_at: string | null;
         };
         Insert: {
           administrative_state?: Database["public"]["Enums"]["administrative_state"];
@@ -739,9 +862,11 @@ export type Database = {
           created_at?: string;
           disposed_at?: string | null;
           district_name?: string | null;
+          government_response_completed_at?: string | null;
           id?: string;
           location_text?: string | null;
           organization_id?: string | null;
+          original_language?: string;
           original_text: string;
           outcome_state?: Database["public"]["Enums"]["outcome_state"];
           registration_number?: string;
@@ -751,8 +876,11 @@ export type Database = {
           state_name?: string | null;
           submission_key?: string | null;
           submitted_at?: string | null;
+          transfer_due_at?: string | null;
           updated_at?: string;
           urgency?: Database["public"]["Enums"]["urgency_level"];
+          wrong_route_detected_at?: string | null;
+          wrong_route_resolved_at?: string | null;
         };
         Update: {
           administrative_state?: Database["public"]["Enums"]["administrative_state"];
@@ -765,9 +893,11 @@ export type Database = {
           created_at?: string;
           disposed_at?: string | null;
           district_name?: string | null;
+          government_response_completed_at?: string | null;
           id?: string;
           location_text?: string | null;
           organization_id?: string | null;
+          original_language?: string;
           original_text?: string;
           outcome_state?: Database["public"]["Enums"]["outcome_state"];
           registration_number?: string;
@@ -777,8 +907,11 @@ export type Database = {
           state_name?: string | null;
           submission_key?: string | null;
           submitted_at?: string | null;
+          transfer_due_at?: string | null;
           updated_at?: string;
           urgency?: Database["public"]["Enums"]["urgency_level"];
+          wrong_route_detected_at?: string | null;
+          wrong_route_resolved_at?: string | null;
         };
         Relationships: [
           {
@@ -1085,6 +1218,7 @@ export type Database = {
           contact_email: string | null;
           created_at: string;
           id: string;
+          is_active: boolean;
           is_appellate_office: boolean;
           level: Database["public"]["Enums"]["org_level"];
           name: string;
@@ -1097,6 +1231,7 @@ export type Database = {
           contact_email?: string | null;
           created_at?: string;
           id?: string;
+          is_active?: boolean;
           is_appellate_office?: boolean;
           level?: Database["public"]["Enums"]["org_level"];
           name: string;
@@ -1109,6 +1244,7 @@ export type Database = {
           contact_email?: string | null;
           created_at?: string;
           id?: string;
+          is_active?: boolean;
           is_appellate_office?: boolean;
           level?: Database["public"]["Enums"]["org_level"];
           name?: string;
@@ -1188,6 +1324,7 @@ export type Database = {
           id: string;
           is_interim: boolean;
           organization_id: string | null;
+          outcome_achieved: string | null;
           outcome_claimed: Database["public"]["Enums"]["outcome_state"];
           partial_or_unresolved_reason: string | null;
           resolution_narrative: string | null;
@@ -1207,6 +1344,7 @@ export type Database = {
           id?: string;
           is_interim?: boolean;
           organization_id?: string | null;
+          outcome_achieved?: string | null;
           outcome_claimed?: Database["public"]["Enums"]["outcome_state"];
           partial_or_unresolved_reason?: string | null;
           resolution_narrative?: string | null;
@@ -1226,6 +1364,7 @@ export type Database = {
           id?: string;
           is_interim?: boolean;
           organization_id?: string | null;
+          outcome_achieved?: string | null;
           outcome_claimed?: Database["public"]["Enums"]["outcome_state"];
           partial_or_unresolved_reason?: string | null;
           resolution_narrative?: string | null;
@@ -1372,6 +1511,35 @@ export type Database = {
         };
         Returns: string;
       };
+      citizen_finalize_document_upload: {
+        Args: {
+          p_doc_kind?: string;
+          p_file_name: string;
+          p_grievance_id: string;
+          p_mime_type: string;
+          p_request_item_id?: string;
+          p_size_bytes: number;
+          p_storage_path: string;
+          p_upload_idempotency_key: string;
+        };
+        Returns: string;
+      };
+      citizen_reminder_status: {
+        Args: { p_grievance_id: string };
+        Returns: Json;
+      };
+      citizen_respond_to_clarification: {
+        Args: {
+          p_clarification_request_id: string;
+          p_document_id?: string;
+          p_response: string;
+        };
+        Returns: undefined;
+      };
+      citizen_send_reminder: {
+        Args: { p_grievance_id: string; p_message: string };
+        Returns: Json;
+      };
       officer_add_interim_update: {
         Args: {
           p_action_completed: string;
@@ -1380,6 +1548,10 @@ export type Database = {
           p_expected_next_step: string;
           p_grievance_id: string;
         };
+        Returns: string;
+      };
+      officer_flag_wrong_route: {
+        Args: { p_grievance_id: string; p_reason: string };
         Returns: string;
       };
       officer_mark_grievance_opened: {
@@ -1422,6 +1594,14 @@ export type Database = {
           p_reason: string;
         };
         Returns: undefined;
+      };
+      public_track_appeal: {
+        Args: { p_reference_number: string };
+        Returns: Json;
+      };
+      public_track_grievance: {
+        Args: { p_registration_number: string };
+        Returns: Json;
       };
     };
     Enums: {

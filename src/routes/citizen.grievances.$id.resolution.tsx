@@ -1,4 +1,4 @@
-import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -27,6 +27,7 @@ import {
 } from "@/lib/cpgrams/resolution-confirmation-draft";
 import { isResolutionReviewEvidence } from "@/lib/cpgrams/citizen-resolution";
 import {
+  acquireResolutionSubmissionLock,
   refreshAfterResolutionConfirmation,
   submitResolutionConfirmation,
   validateResolutionConfirmation,
@@ -56,6 +57,7 @@ function ResolutionPage() {
   const [recorded, setRecorded] = useState(false);
   const [draftReady, setDraftReady] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const submissionLocked = useRef(false);
   const resolution = caseQuery.data?.resolutions.find((entry) => !entry.is_interim) ?? null;
 
   useEffect(() => {
@@ -177,6 +179,7 @@ function ResolutionPage() {
       resolutionConfirmDebug("13", "success state set", { grievanceId: id, confirmation: choice });
     },
     onError: (error) => {
+      submissionLocked.current = false;
       resolutionConfirmError("10", "mutation failed", {
         grievanceId: id,
         confirmation: choice,
@@ -254,6 +257,7 @@ function ResolutionPage() {
       setSubmitError(validationError);
       return;
     }
+    if (!acquireResolutionSubmissionLock(submissionLocked)) return;
     resolutionConfirmDebug("05", "validation passed", {
       grievanceId: id,
       confirmation: choice,
@@ -335,6 +339,13 @@ function ResolutionPage() {
         value={resolution.action_taken}
         detail={resolution.resolution_narrative}
       />
+      <EvidenceCard
+        title="Outcome achieved"
+        value={
+          resolution.outcome_achieved ??
+          "The office did not separately record an outcome-achieved statement for this earlier resolution."
+        }
+      />
       <Card className="border-border">
         <CardContent className="space-y-3 p-5">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
@@ -365,14 +376,23 @@ function ResolutionPage() {
           "Tell us whether the government action actually solved your problem."
         }
       />
-      {recorded ? (
+      {recorded || !mayConfirm ? (
         <Card className="border-success/35 bg-success-surface" role="status">
           <CardContent className="space-y-3 p-5">
-            <h2 className="font-semibold">Outcome confirmed</h2>
+            <h2 className="font-semibold">
+              {caseQuery.data.grievance.citizen_confirmation_state === "CONFIRMED_RESOLVED"
+                ? "You confirmed this issue is resolved"
+                : caseQuery.data.grievance.citizen_confirmation_state === "PARTIALLY_RESOLVED"
+                  ? "You reported this issue is partly resolved"
+                  : caseQuery.data.grievance.citizen_confirmation_state === "NOT_RESOLVED"
+                    ? "You reported this issue is not resolved"
+                    : "Outcome response recorded"}
+            </h2>
             <p className="text-sm text-muted-foreground">
-              Your response was saved and the case state was refreshed.
+              Your response is saved in the case record and remains available after refresh.
             </p>
-            {choice !== "CONFIRMED_RESOLVED" ? (
+            {(choice ?? caseQuery.data.grievance.citizen_confirmation_state) !==
+            "CONFIRMED_RESOLVED" ? (
               <Button asChild>
                 <Link
                   to="/citizen/grievances/$id/appeal"
