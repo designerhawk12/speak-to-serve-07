@@ -6,7 +6,7 @@ export interface StructuredProviderRequest {
 }
 
 export interface StructuredProvider {
-  readonly provider: "openai" | "gemini";
+  readonly provider: "openai" | "gemini" | "groq";
   readonly model: string;
   readonly label: string;
   generate(request: StructuredProviderRequest): Promise<unknown>;
@@ -358,6 +358,71 @@ class OpenAiStructuredProvider implements StructuredProvider {
   }
 }
 
+class GroqStructuredProvider implements StructuredProvider {
+  readonly provider = "groq" as const;
+  readonly label: string;
+
+  constructor(
+    private readonly apiKey: string,
+    readonly model: string,
+    private readonly runtime: StructuredProviderRuntime,
+  ) {
+    this.label = `${this.provider}:${model}`;
+  }
+
+  async generate(request: StructuredProviderRequest): Promise<unknown> {
+    return withRetry(this.runtime, this, async (signal) => {
+      const response = await providerFetch(this.runtime)(
+        "https://api.groq.com/openai/v1/responses",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${this.apiKey}`,
+            "Content-Type": "application/json",
+          },
+          signal,
+          body: JSON.stringify({
+            model: this.model,
+            store: false,
+            instructions: request.instructions,
+            input: request.input,
+            text: {
+              format: {
+                type: "json_schema",
+                name: request.schemaName,
+                strict: true,
+                schema: request.jsonSchema,
+              },
+            },
+          }),
+        },
+      );
+
+      if (!response.ok) {
+        throw new ProviderFailure(
+          this.provider,
+          this.model,
+          "HTTP",
+          `Groq returned HTTP ${response.status}.`,
+          {
+            status: response.status,
+            retryable:
+              response.status === 408 ||
+              response.status === 429 ||
+              response.status >= 500,
+          },
+        );
+      }
+
+      return parseProviderJson(
+        this.provider,
+        this.model,
+        extractOpenAiResponseText(await response.json()),
+      );
+    });
+  }
+}
+
 class GeminiStructuredProvider implements StructuredProvider {
   readonly provider = "gemini" as const;
   readonly label: string;
@@ -415,6 +480,12 @@ export function configuredStructuredProvider(
 ): StructuredProvider | null {
   const provider = (runtime.getEnv("AI_PROVIDER") ?? "deterministic").trim().toLowerCase();
   const model = runtime.getEnv("AI_MODEL")?.trim();
+  if (provider === "groq") {
+    const apiKey = runtime.getEnv("GROQ_API_KEY")?.trim();
+    return apiKey
+      ? new GroqStructuredProvider(apiKey, model || "qwen/qwen3.8-27b", runtime)
+      : null;
+  }
   if (provider === "gemini") {
     const apiKey = runtime.getEnv("GEMINI_API_KEY")?.trim();
     return apiKey
