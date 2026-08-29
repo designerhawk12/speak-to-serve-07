@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import { useSession } from "@/lib/cpgrams/session";
 import { useLanguage } from "@/lib/cpgrams/language-context";
 import { UI_ROLE_MESSAGE_KEYS } from "@/lib/cpgrams/ui-messages";
-import { LanguageSelector } from "./LanguageSelector";
+
 
 export interface AppHeaderProps {
   /** Right-hand slot: nav, auth buttons, account menu. */
@@ -45,7 +45,7 @@ export function AppHeader({ children, secondary, className }: AppHeaderProps) {
           </span>
         </Link>
         <div className="flex items-center gap-2">
-          <LanguageSelector />
+
           {children}
         </div>
       </div>

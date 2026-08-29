@@ -3,7 +3,7 @@ import { LoadingState } from "@/components/cpgrams/LoadingState";
 import { roleHomePath } from "@/lib/cpgrams/auth-routing";
 import { useLanguage } from "@/lib/cpgrams/language-context";
 import { useSession } from "@/lib/cpgrams/session";
-import { LanguageSelector } from "@/components/cpgrams/LanguageSelector";
+
 import { Landmark } from "lucide-react";
 
 export const Route = createFileRoute("/auth")({
@@ -30,7 +30,7 @@ function AuthLayout() {
       <div className="gov-band">
         <div className="page-container flex min-h-8 items-center justify-between gap-3 text-[11px] font-medium">
           <span>{t("brand.governmentBand")}</span>
-          <LanguageSelector />
+
         </div>
       </div>
       <div className="flex flex-1 items-center justify-center px-4 py-10">
