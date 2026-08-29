@@ -320,6 +320,7 @@ export async function submitNewGrievance(input: SubmitNewGrievanceInput): Promis
     category_id: input.categoryId,
     organization_id: input.organizationId,
     location_text: input.location || null,
+    appellate_organization_id: "d3000000-0000-4000-8000-000000000005",
     administrative_state: "SUBMITTED",
     outcome_state: "UNKNOWN",
     citizen_confirmation_state: "NOT_REQUESTED",
